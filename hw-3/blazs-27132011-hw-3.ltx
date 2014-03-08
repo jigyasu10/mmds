@@ -1,0 +1,300 @@
+\documentclass[12pt]{article}
+
+\usepackage{fullpage}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amsthm}
+\usepackage{enumerate}
+\usepackage{graphicx}
+\usepackage{epstopdf}
+\usepackage{listings}
+\usepackage{url}
+\usepackage{tabularx}
+
+\DeclareMathOperator{\E}{\mathbb{E}} % expectation 
+\DeclareMathOperator{\Conv}{conv}
+\DeclareMathOperator{\Conf}{conf}
+\DeclareMathOperator{\Sim}{sim}
+\DeclareMathOperator{\Lift}{lift}
+\DeclareMathOperator{\Support}{Support}
+
+\newcommand\conf[2]{\Conf(#1\rightarrow #2)} % confidence
+\newcommand\lift[2]{\Lift(#1\rightarrow #2)} % lift
+\newcommand\conv[2]{\Conv(#1\rightarrow #2)} % conviction 
+\newcommand\support[1]{\Support(#1)} % conviction 
+
+\begin{document}
+	\input{cover.tex}
+	\paragraph{Note.} You can find all source code in appendix~\ref{sec:code} at the end of the document.
+	\section{Latent Features for Recommendations}
+		\begin{enumerate}[(a)]
+			\item We have $\epsilon_{iu}=\frac{\partial}{\partial R_{iu}}E=2(R_{iu}-q_ip_u^\text{T})$. This means $\epsilon_{iu}$ is the prediction error (times two) we make for prediction of rating user $u$ made for item $i$. (Note that in our code we use $\epsilon_{iu}=R_{iu}-q_ip_u^\text{T}$.) The update equations are as follows:
+			\begin{align*}
+				q_i &:= q_i+\mu_1(\epsilon_{iu}p_u-\lambda_1q_i), \\
+				p_u &:= p_u+\mu_2(\epsilon_{iu}q_i-\lambda_2p_u).
+			\end{align*}
+			In our case we have $\mu_1=\mu_2=\eta$ and $\lambda_1=\lambda_2=\lambda$. 
+			\item See listing~\ref{lst:sgd} for our implementation of the stohastic gradient descent algorithm. See figure~\ref{fig:sgd} for plot of the value of the objective function on the training set as a function of the number of iterations. We initialized $P$ and $Q$ with values $[0,\sqrt{5/k}]$, picked uniformly at random. Furthermore, we found that setting learning rate $\eta:=0.01565$ works well.
+			\begin{figure}
+				\centering
+				\includegraphics[scale=0.3]{hw3q1ib.eps}
+				\caption{Error in each of the 40 iterations of our algorithm.}
+				\label{fig:sgd}
+			\end{figure}
+			\item Define the training error as $E_\text{tr} := \sum_{(i,u)\in\text{train}} (R_iu-q_ip_u^\text{T})^2$ and the test error as $E_\text{te} := \sum_{(i,u)\in\text{test}} (R_iu-q_ip_u^\text{T})^2$. See listing~\ref{lst:sgd2} for the modified code. See figure~\ref{fig:test} for errors with and without regularization on the test set and figure~\ref{fig:train} for errors with and without regularization on the training set. True statements are the following ones:
+			\begin{itemize}
+				\item B: Regularization decreases the test error for $k\ge5$.
+				\item D: Regularization increases the training error for all (or almost all) $k$.
+				\item H: Regularization decreases overfitting. 
+			\end{itemize}
+			\begin{figure}
+				\centering
+				\includegraphics[scale=0.3]{hw3q1c_test.eps}
+				\caption{Plot for $E_\text{te}$ with no regularization (green) and $E_\text{te}$ with $\lambda=0.2$ (blue) as a function of $k\in\{1,2,\ldots,10\}$.}
+				\label{fig:test}
+			\end{figure}
+			\begin{figure}
+				\centering
+				\includegraphics[scale=0.3]{hw3q1c_train.eps}
+				\caption{Plot for $E_\text{tr}$ with no regularization (green) and $E_\text{tr}$ with $\lambda=0.2$ (blue) as a function of $k\in\{1,2,\ldots,10\}$.}
+				\label{fig:train}
+			\end{figure}
+		\end{enumerate}
+	
+	\section{PageRank Computation}
+		\begin{enumerate}[(a)]
+			\item Define $r^{(0)}=\frac{1}{n}e$ and $r^{(k)}=\frac{1-\beta}{n}e+\beta Mr^{(k-1)}$ for $k>0$ and $\beta\in(0,1)$, where $e$ is the unit vector of dimension $n$. Furthermore let $r$ be the PageRank vector, so we have $r=\frac{1-\beta}{n}e+\beta Mr$. We now prove $\|r-r^{(k)}\|_1\le2\beta^k$ for all $k\ge0$ by induction. Fist note $\|r-r^{(0)}\|_1\le2$, so we have the base case. (Norm is largest when $p_i=1$ for some $i$ and $p_j=0$ for $i\neq j$. So $\|r-r^{(0)}\|_1\le1-1/n+n\cdot1/n=2(n-1)/n\le 2$.) Now suppose $\|r-r^{(\ell)}\|_1\le2\beta^\ell$ for $\ell=0,1,\ldots,k$. We now do the inductive step:
+			\begin{align*}
+				\|r-r^{(k+1)}\|_1 &= \|\frac{1-\beta}{n}e+\beta Mr - \frac{1-\beta}{n}e-\beta Mr^{(k)}\|_1 \\
+					&= \|\beta M(r-r^{(k)})\|_1 \\
+					&= \beta\|M(r-r^{(k)})\|_1 \\
+					&\le \beta\|M\|_1\|r-r^{(k)}\|_1 \\
+					&\le 2\beta^{k+1},
+			\end{align*}
+			establishing the inequality. (Note that for the matrix $L_1$ norm we have $\|M\|_1=\max_{1\le j\le n}\sum_{i=1}^n|M_{ij}|\le1$, because $M$ is column stohastic. We also used $\|Mv\|_1\le\|M\|_1\|v\|_1$ for matrix $M$ and vector $v$.)
+			\item Suppose $\|r-r^{(k)}\|_1\le2\beta^k$ and let $\delta\in(0,1)$ be constant. We then solve
+			\begin{equation*}
+				\|r-r^{(k)}\|_1\le2\beta^k<\delta
+			\end{equation*}
+			for $k$ and get $k>\log(\delta/2)/\log(1/\beta)$. Since $\delta$ is constant this means we need $k=O(1/\log(1/\beta))$ iterations to get error at most $\delta$. Because the cost of each iteration is $O(m)$, we have that the total running time required to get the desired error is $O(m/\log(1/\beta))$. (We can compute $(1-\beta)e/n+\beta Mr^{(k)}$ in $O(m)$.) This means that after $O(m/\log(1/\beta))$ steps we have error less than $\delta$. 
+			\item Show $\E[\widetilde{r_j}]=\frac{1-\beta}{nR}\E[\text{visits}(j)]=r_j$, where $r_j$ is $j$-th component of the true PageRank vector and $\E[\widetilde{r}_j]$ is the expected number of times the node $j$ is visited, taken over all $nR$ random walks. Recall that for PageRank we have
+			\begin{equation*}
+				r_j = \frac{1-\beta}{n}+\beta\sum_{(i\to j)\in E}\frac{r_i}{\deg(i)},
+			\end{equation*}
+			which is equivalent to $r=\frac{1-\beta}{n}e+\beta Mr$. Could we somehow get $\E[\widetilde{r}]=\frac{1-\beta}{n}e+\beta M\E[\widetilde{r}]$?
+			\item We now show that the running time of the MC algorithm is $O(\frac{nR}{1-\beta})$ if we run it $R$ times from each node on a graph with $n$ vertices. First, let $T(v)$ be running time of the algorithm when run from the vertex $v$. After updating the count for $v$, it will continue the walk with probability $\beta$ and terminate with probability $1-\beta$, so we clearly have $T(v) = O(1)+\beta T(v)$, which gives us the geometric series
+			\begin{align*}
+				T(v)&= \sum_{k\ge0}\beta^kO(1) = O(\frac{1}{1-\beta}).
+			\end{align*}
+			Since we run the algorithm $R$ times for each node, we have the total running time of $T(v)nR = O(\frac{nR}{1-\beta})$. 
+			\item We implemented both PageRank with Power iteration and the MC algorithm in python; for the code see listing~\ref{lst:hw3q2i1}.
+			\begin{itemize}
+				\item The running time is $0.008119$ seconds. See listing~\ref{lst:hw3q2i1}.
+				\item For code for this question see listing~\ref{lst:hw3q2i1}. To compute the running times we took the mean running time of $50$ runs for each $R=1,3,5$. For $R=1$ the running time is $0.0031599$ seconds. For $R=3$ the running time is $0.005479$ seconds. For $R=5$ the running time is $0.00712$ seconds. The absolute errors --- see listing~\ref{lst:hw3q2i1} for implementation --- were as in table~\ref{tab:errs}, where error is defined as
+				\begin{equation*}
+					E_K := \frac{1}{K}\sum_{i=1}^K|\widetilde{r}_i-r_i|,
+				\end{equation*}
+				for approximate PageRank vector $\widetilde{r}$ and ``true'' PageRank $r$. (See HW text for detailed description of the error metric.)
+				\begin{table}
+					\centering
+					\begin{tabular}{|c|c|c|}
+						\hline
+						$R$ & $K$ & Error \\ \hline
+						$1$ & $10$ & $0.0106990249484$ \\
+						$1$ & $30$ & $0.00947132554345$ \\
+						$1$ & $50$ & $0.00766502952898$ \\
+						$1$ & All & $0.0073999233725$ \\ \hline
+						$3$ & $10$ & $0.00989902494841$ \\
+						$3$ & $30$ & $0.00898243665457$ \\
+						$3$ & $50$ & $0.00694048754126$ \\
+						$3$ & All & $0.00695841712359$ \\ \hline
+						$5$ & $10$ & $0.00983703989898$ \\
+						$5$ & $30$ & $0.00843815848515$ \\
+						$5$ & $50$ & $0.00682750626194$ \\
+						$5$ & All & $0.00641664075857$ \\ \hline
+					\end{tabular}
+					\caption{Average absolute errors.}
+					\label{tab:errs}
+				\end{table}
+			\end{itemize}
+		\end{enumerate}
+	
+	\section{Similarity Ranking}
+		\begin{enumerate}[(a)]
+			\item Let $C_1:=C_2:=0.8$. We compute 3 steps of similarity for $s_A(\mathtt{camera},\mathtt{phone})$ and $s_A(\mathtt{camera},\mathtt{printer})$.
+			\begin{enumerate}[Step 1.]
+				\item We have
+				{\tiny \begin{align*}
+					s_A(\mathtt{camera},\mathtt{phone}) &= \frac{0.8}{6}\left(s_B(\mathtt{nokia},\mathtt{nokia})+s_B(\mathtt{nokia},\mathtt{apple})+s_B(\mathtt{kodak},\mathtt{nokia})+s_B(\mathtt{kodak},\mathtt{apple})+s_B(\mathtt{canon},\mathtt{nokia})+s_B(\mathtt{canon},\mathtt{apple})\right) \\
+					&= \frac{0.8}{6}\cdot1=\frac{4}{5\cdot6} = 2/15 \\
+					s_A(\mathtt{camera},\mathtt{printer}) &= \frac{0.8}{3}\left(s_B(\mathtt{nokia},\mathtt{hp})+s_B(\mathtt{kodak},\mathtt{hp})+s_B(\mathtt{canon},\mathtt{hp})\right) = 0 \\
+					s_A(\mathtt{phone},\mathtt{printer}) &= \frac{0.8}{2}\left(s_B(\mathtt{nokia},\mathtt{hp})+s_B(\mathtt{apple},\mathtt{hp})\right)=0 \\
+					s_B(\mathtt{nokia},\mathtt{apple}) &= \frac{0.8}{2}\left(s_A(\mathtt{phone},\mathtt{phone})+s_A(\mathtt{phone},\mathtt{camera})\right)=2/5 \\
+					s_B(\mathtt{nokia},\mathtt{hp}) &= \frac{0.8}{2}\left(s_A(\mathtt{phone},\mathtt{printer})+s_A(\mathtt{camera},\mathtt{printer})\right)=0 \\
+					s_B(\mathtt{nokia},\mathtt{kodak}) &= \frac{0.8}{2}\left(s_A(\mathtt{phone},\mathtt{camera})+s_A(\mathtt{camera},\mathtt{camera})\right) = 2/5 \\
+					s_B(\mathtt{nokia},\mathtt{canon}) &= \frac{0.8}{2}\left(s_A(\mathtt{phone},\mathtt{camera})+s_A(\mathtt{camera},\mathtt{camera})\right)=2/5 \\
+					s_B(\mathtt{kodak},\mathtt{apple}) &= \frac{0.8}{1}\left(s_A(\mathtt{phone},\mathtt{camera})\right) = 0\\
+					s_B(\mathtt{kodak},\mathtt{hp}) &= \frac{0.8}{1}\left(s_A(\mathtt{printer},\mathtt{camera})\right) = 0 \\
+					s_B(\mathtt{kodak},\mathtt{cannon}) &= \frac{0.8}{1}\left(s_A(\mathtt{camera},\mathtt{camera})\right) = 4/5 \\
+					s_B(\mathtt{canon},\mathtt{apple}) &= \frac{0.8}{1}\left(s_A(\mathtt{phone},\mathtt{camera})\right) = 0 \\
+					s_B(\mathtt{canon},\mathtt{hp}) &= \frac{0.8}{1}\left(s_A(\mathtt{printer},\mathtt{camera})\right) = 0 \\
+					s_B(\mathtt{apple},\mathtt{hp}) &= \frac{0.8}{1}\left(s_A(\mathtt{phone},\mathtt{printer})\right) = 0
+				\end{align*} }
+				\item We now use similarities from step 1.
+				{\small \begin{align*}
+					s_A(\mathtt{camera},\mathtt{phone}) &= \frac{0.8}{6}\left(1+3\frac{2}{5}\right)=22/75 & s_A(\mathtt{camera},\mathtt{printer}) &= 0 \\
+					s_A(\mathtt{phone},\mathtt{printer}) &= 0 & s_B(\mathtt{nokia},\mathtt{apple}) &= 34/75 \\
+					s_B(\mathtt{nokia},\mathtt{hp}) &= 0 & s_B(\mathtt{nokia},\mathtt{kodak}) &= 34/75 \\
+					s_B(\mathtt{nokia},\mathtt{canon}) &= 34/75 & s_B(\mathtt{kodak},\mathtt{apple}) &= 8/75 \\
+					s_B(\mathtt{kodak},\mathtt{hp}) &= 0 & s_B(\mathtt{kodak},\mathtt{cannon}) &= 4/5 \\
+					s_B(\mathtt{canon},\mathtt{apple}) &= 8/75 & s_B(\mathtt{canon},\mathtt{hp}) &= 0 \\
+					s_B(\mathtt{apple},\mathtt{hp}) &= 0
+				\end{align*} }
+				\item Finally we compute 3 step using similarities from the previous one:
+				{\small \begin{align*}
+					s_A(\mathtt{camera},\mathtt{phone}) &= \frac{4}{5\cdot6}(1+\frac{2\cdot8}{75}+\frac{3\cdot34}{75})=0.343 & s_A(\mathtt{camera},\mathtt{printer}) &= 0 \\
+					%s_A(\mathtt{phone},\mathtt{printer}) &= 0 & s_B(\mathtt{nokia},\mathtt{apple}) &= x \\
+					%s_B(\mathtt{nokia},\mathtt{hp}) &= x & s_B(\mathtt{nokia},\mathtt{kodak}) &= x \\
+					%s_B(\mathtt{nokia},\mathtt{canon}) &= x & s_B(\mathtt{kodak},\mathtt{apple}) &= x \\
+					%s_B(\mathtt{kodak},\mathtt{hp}) &= x & s_B(\mathtt{kodak},\mathtt{cannon}) &= x \\
+					%s_B(\mathtt{canon},\mathtt{apple}) &= x & s_B(\mathtt{canon},\mathtt{hp}) &= x \\
+					%s_B(\mathtt{apple},\mathtt{hp}) &= x
+				\end{align*} }
+			\end{enumerate}
+			\item The similarity scores above assume that all edges are equally relevant. Let's say we also have information about how many times a URL is clicked for a given query (or equivalently, many users bought how many items). For a pair $(X, y)$, we denote this information by the weight $W_{(X,y)}$. We propose the following:
+			\begin{align*}
+				s_A(X,Y) &= \frac{C_1}{\sum_{i=1}^{|O(X)|}\sum_{j=1}^{|O(Y)|}W_{X,O_i(X)}W_{Y,O_i(Y)}}\sum_{i=1}^{|O(X)|}\sum_{j=1}^{|O(Y)|}W_{X,O_i(X)}W_{Y,O_i(Y)}s_B(O_i(X),O_j(Y)), \\
+				s_B(x,y) &= \frac{C_2}{\sum_{i=1}^{|I(x)|}\sum_{j=1}^{|I(y)|}W_{x,I_i(x)}W_{y,I_i(y)}}\sum_{i=1}^{|I(x)|}\sum_{j=1}^{|I(y)|}W_{x,I_i(x)}W_{y,I_i(y)}s_B(I_i(X),I_j(y)).
+			\end{align*}
+			\item Let $C_1:=C_2:=0.8$. We compute 3 iterations of $s_A(a_1,a_2)$ for complete bipartite graphs $K_{2,1}$ and $K_{2,2}$. For $K_{2,1}$ with $A=\{a_1,a_2\}$ and $B=\{b_1\}$ we have:
+			\begin{enumerate}[Step 1)]
+				\item Note $s_B(b_1,b_1)=1$ by ``definition''. (We would not need to even write these down as they never change; but the author felt including them would make no harm.)
+				\begin{align*}
+					s_A(a_1,a_2) &= 0.8s_B(b_1,b_1)=0.8=4/5 & s_B(b_1,b_1) &= 1.
+				\end{align*}
+				\item We now use previous scores:
+				\begin{align*}
+					s_A(a_1,a_2) &= 0.8s_B(b_1,b_1)=4/5 & s_B(b_1,b_1) &= 1.
+				\end{align*}
+				\item Similarly for the final step
+				\begin{align*}
+					s_A(a_1,a_2) &= 0.8s_B(b_1,b_1)=4/5 & s_B(b_1,b_1) &= 1.
+				\end{align*}
+			\end{enumerate}
+			We now repeat the procedure for $K_{2,2}$ with $A=\{a_1,a_2\}$ and $B=\{b_1,b_2\}$:
+			\begin{enumerate}[Step 1)]
+				\item Using initialization values we have
+				\begin{align*}
+					s_A(a_1,a_2) &= \frac{0.8}{4}(s_B(b_1,b_1)+s_B(b_1,b_2)+s_B(b_2,b_2) = \frac{0.8}{4}2=4/10, \\
+					s_B(b_1,b_2) &= \frac{0.8}{4}(s_A(a_1,a_1)+s_A(a_1,a_2)+s_A(a_2,a_2) = \frac{0.8}{4}2=4/10.
+				\end{align*}
+				\item We now use scores from step 1:
+				\begin{align*}
+					s_A(a_1,a_2) &= \frac{0.8}{4}(s_B(b_1,b_1)+s_B(b_1,b_2)+s_B(b_2,b_2) = \frac{0.8}{4}(2+4/10) \\
+						&= 24/50, \\
+					s_B(b_1,b_2) &= \frac{0.8}{4}(s_A(a_1,a_1)+s_A(a_1,a_2)+s_A(a_2,a_2) = \frac{0.8}{4}(2+4/10) \\
+						&= 24/50.
+				\end{align*}
+				\item Finally, compute third step using scores from step 2:
+				\begin{align*}
+					s_A(a_1,a_2) &= \frac{0.8}{4}(s_B(b_1,b_1)+s_B(b_1,b_2)+s_B(b_2,b_1)+s_B(b_2,b_2) = \frac{0.8}{4}(2+\frac{24}{50}) \\
+						&= 124/250, \\
+					s_B(b_1,b_2) &= \frac{0.8}{4}(s_A(a_1,a_1)+s_A(a_1,a_2)+s_A(a_2,a_1)+s_A(a_2,a_2) = \frac{0.8}{4}(2+\frac{24}{50}) \\
+						&= 124/250.
+				\end{align*}
+				For $K_{2,1}$ the scores $s_A(a_1,a_2)$ do not change through iterations, while for $K_{2,2}$ they converge to $1/2$. 
+			\end{enumerate}
+		\end{enumerate}
+	
+	\section{Dense Communities in Networks}
+		We here use the well-knonw handshaking lemma, stating $2|E(G)|=\sum_{v\in V(G)}\deg_G(v)$. (For example, $\rho(S)=\frac{1}{2|S|}\sum_{v\in S}\deg_S(v)$.)
+		\begin{enumerate}[(a)]
+			\item We first prove lower bounds on the size of $A(S)$ and on the number of iterations of the algorithm.  
+			\begin{enumerate}[(i)]
+				\item We show $|A(S)|\ge\frac{\epsilon}{1+\epsilon}|S|$. Note that we have
+				\begin{align*}
+					2|E[S]| = \sum_{v\in S}\deg_S(v)\ge\sum_{v\in S\backslash A(S)}\deg_S(v)\ge2(1+\epsilon)\frac{|E[S]|}{|S|}(|S|-|A(S)|),
+				\end{align*}
+				implying $|S|\ge(|S|-|A(S)|)(1+\epsilon)$, which immediately yields $|A(S)|\ge\frac{\epsilon}{1+\epsilon}|S|$. (We have $\sum_{v\in S\backslash A(S)}\deg_S(v)\ge2(1+\epsilon)\frac{|E[S]|}{|S|}(|S|-|A(S)|)$ because by definition each node in $S\backslash A(S)$ has degree at least $2(1+\epsilon)\rho(S)$ and because $S$ and $A(S)$ are disjoint there are $|S|-|A(s)|$ nodes.)
+				\item Let $|S|$ be the current size. In next iteration we are left with at most $\frac{\epsilon}{1+\epsilon}|S|$ nodes. This means $|S|-\frac{\epsilon}{1+\epsilon}|S|=\frac{1}{1+\epsilon}|S|$ for each iteration, i.e., in each iteration the size decreases by factor of at least $(1+\epsilon)$. Since $|S|=|V|=n$ initially, this means we will obviously make at most $1+\log_{1+\epsilon} n$ steps before $S=\emptyset$. (If $n=1$ the algorithm clearly needs one step, while $\log_{1+\epsilon}n=0$.) 
+			\end{enumerate}
+			\item We now show that the density of the set the algorithm returns is at most $2(1+\epsilon)$ times smaller than $\rho^\star(G)$.
+			\begin{enumerate}[(i)]
+				\item Let $S^\star := \underset{S\subseteq V(G)}{\arg\max} \frac{|E[S]|}{|S|}$ and for the sake of contradiction assume there exists $v\in S^\star$ such that $\deg_{S^\star}(v)\le\rho^\star(G)-1$. Now note that 
+				\begin{align*}
+					\rho(S^\star\backslash\{v\}) &= \frac{|E[S^\star]|-\deg_{S^\star}(v)}{|S^\star|-1} \\
+						&\ge \frac{|E[S^\star]|-\rho^\star(G)+1}{|S^\star|-1} \\
+						&= \frac{\rho^\star(G)(|S^\star|-1)+1}{|S^\star|-1} \\
+						&= \rho^\star(G)+\frac{1}{|S^\star|-1},
+				\end{align*}
+				meaning that $S^\star\backslash\{v\}$ is denser than $S^\star$. This contradicts the maximality assumption, establishing $\deg_{S^\star}(v)\ge\rho^\star(G)$ for all $v\in S^\star$. We used $|E[S^\star]|=|S^\star|\rho^\star(G)$.
+				\item Consider the first iteration of the while loop so that there is a node $v\in S^\star\cap A(S)$. We show that then $2(1+\epsilon)\rho(S)\ge\rho^\star(G)$. Since $v\in A(S)$ we have $\deg_S(v)\ge2(1+\epsilon)\rho(S)$. Because this is the first iteration such that $S^\star\cap A(S)\neq\emptyset$, we have $S^\star\subseteq S$ and thus $\deg_S(v)\ge\deg_{S^\star}(v)$. (Because $S$ is superset of $S^\star$, the vertex $v$ can only ``touch'' more edges in the graph spanned by $S$ than in the graph spanned by $S^\star$, thus $\deg_S(v)\ge\deg_{S^\star}(v)$.) We now trivially have
+				\begin{equation*}
+					\rho^\star(G)\le\deg_{S^\star}(v)\le\deg_S(v)\le2(1+\epsilon)\rho(S),
+				\end{equation*}
+				establishing the desired inequality. 
+				\item We now conclude $\rho(\widetilde{S})\ge\frac{1}{2(1+\epsilon)}\rho^\star(G)$. This must be the case, because $\widetilde{S}$ is the set $S$ that maximizes $\rho(S)$ and we know from previous ``bullet'' that there exists (we compute it in one of the iterations of the algorithm) at least one $S$ such that $2(1+\epsilon)\rho(S)\ge\rho^\star(G)$, because $S^\star\subseteq V$ and we start with $S=V$ and keep removing vertices until we are left with $S=\emptyset$.
+			\end{enumerate}
+			\item See listing~\ref{lst:hw3q4} for the implementation of the algorithm.
+			\begin{enumerate}[(i)]
+				\item See figure~\ref{fig:hw3q4ic1} for iterations needed (blue) and the theoretical bounds (green). We see that in practice the algorithm performs --- in terms of number of iterations as a function of $\epsilon$ --- much better than what the theoretical upper bound guarantees us. (Note: We plotted $1+\log_{1+\epsilon}(n)$, not $\log_{1+\epsilon}(n)$.)
+				\begin{figure}
+					\centering
+					\includegraphics[scale=0.8]{hw3q4ic1.eps}
+					\caption{Number of steps (blue) and theoretical bounds (green) for various epsilons (epsilons are on $x$-axis).}
+					\label{fig:hw3q4ic1}
+				\end{figure}
+				\item See figure~\ref{fig:hw3q4ic2_density} for density, figure~\ref{fig:hw3q4ic2_edgs} for the number of edges, and figure~\ref{fig:hw3q4ic2_sizs} for the number of vertices.
+				\begin{figure}
+					\centering
+					\includegraphics[scale=0.6]{hw3q4ic2_density.eps}
+					\caption{Density $\rho(S_i)$ as a function of the number of steps.}
+					\label{fig:hw3q4ic2_density}
+				\end{figure}
+				\begin{figure}
+					\centering
+					\includegraphics[scale=0.6]{hw3q4ic2_edgs.eps}
+					\caption{Number of edges $|E[S_i]|$ as a function of the number of steps.}
+					\label{fig:hw3q4ic2_edgs}
+				\end{figure}
+				\begin{figure}
+					\centering
+					\includegraphics[scale=0.6]{hw3q4ic2_sizs.eps}
+					\caption{Number of vertices $|S_i|$ as a function of the number of steps.}
+					\label{fig:hw3q4ic2_sizs}
+				\end{figure}
+				\item See figure~\ref{fig:hw3q4ic3_density} for density, figure~\ref{fig:hw3q4ic3_edges} for the number of edges, and figure~\ref{fig:hw3q4ic3_sizes} for the number of vertices.
+				\begin{figure}
+					\centering
+					\includegraphics[scale=0.6]{hw3q4c3_density.eps}
+					\caption{Densities $\rho(S_i)$ for each of $20$ communities.}
+					\label{fig:hw3q4ic3_density}
+				\end{figure}
+				\begin{figure}
+					\centering
+					\includegraphics[scale=0.6]{hw3q4c3_edges.eps}
+					\caption{Edge sizes $|E[S_i]|$ for each of $20$ communities.}
+					\label{fig:hw3q4ic3_edges}
+				\end{figure}
+				\begin{figure}
+					\centering
+					\includegraphics[scale=0.6]{hw3q4c3_sizes.eps}
+					\caption{Number of vertices $|S_i|$ for each of $20$ communities.}
+					\label{fig:hw3q4ic3_sizes}
+				\end{figure}
+			\end{enumerate}
+		\end{enumerate}
+\appendix
+	\section{Source code}\label{sec:code}
+		This appendix includes all the source code that we reference throughout the document. 
+		\subsection{Latent Features for Recommendations}
+			\lstinputlisting[label=lst:sgd,caption={SGD code for HW3Q1 item b.},language=c++,frame=single,tabsize=2,basicstyle=\footnotesize,numbers=left,breaklines=true]{code_hw3q1ib.cpp}
+			\lstinputlisting[label=lst:sgd2,caption={SGD code for HW3Q1 item c.},language=c++,frame=single,tabsize=2,basicstyle=\footnotesize,numbers=left,breaklines=true]{sgd.cpp}
+		\subsection{PageRank Computation}
+			\lstinputlisting[label=lst:hw3q2i1,caption={PageRank code for HW3Q2.},language=python,frame=single,tabsize=2,basicstyle=\footnotesize,numbers=left,breaklines=true]{hw3q2.py}
+		\subsection{Dense Communities in Networks}
+			\lstinputlisting[label=lst:hw3q4,caption={Streaming implementatoin of the algorithm from HW3Q4.},language=python,frame=single,tabsize=2,basicstyle=\footnotesize,numbers=left,breaklines=true]{hw3q4.py}
+		
+\bibliographystyle{alpha}
+\bibliography{refs}
+\end{document}
