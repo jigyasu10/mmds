@@ -1,0 +1,228 @@
+\documentclass[12pt]{article}
+
+\usepackage{fullpage}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amsthm}
+\usepackage{enumerate}
+\usepackage{graphicx}
+\usepackage{epstopdf}
+\usepackage{listings}
+\usepackage{url}
+
+\DeclareMathOperator{\E}{\mathbb{E}} % expectation 
+\DeclareMathOperator{\Conv}{conv}
+\DeclareMathOperator{\Conf}{conf}
+\DeclareMathOperator{\Sim}{sim}
+\DeclareMathOperator{\Lift}{lift}
+\DeclareMathOperator{\Support}{Support}
+
+\newcommand\conf[2]{\Conf(#1\rightarrow #2)} % confidence
+\newcommand\lift[2]{\Lift(#1\rightarrow #2)} % lift
+\newcommand\conv[2]{\Conv(#1\rightarrow #2)} % conviction 
+\newcommand\support[1]{\Support(#1)} % conviction 
+
+\begin{document}
+	\input{cover.tex}
+	
+	\section{Recommendation systems}
+		Suppose we have a set $U$ of $m$ users and an set $I$ of $n$ items. Define rating matrix $R\in\mathbb{R}^{m\times n}$ as $R_{i,j}:=1$ if user $i$ likes items $j$ and set $R_{i,j}:=0$ otherwise. Now define diagonal $m\times m$ matrix $P$, with $i$-th diagonal element defined as the degree of the user node $i$, i.e., as the number of items user $i$ likes. Similarly define diagonal $n\times n$ matrix $Q$ with $i$-th diagonal element defined as the degree of the item node $i$, i.e., as the number of users that like the item $i$. 
+		
+		\begin{enumerate}[(a)]
+			\item Let $S_I$ be the item similarity $n\times n$ matrix, defined as $S_{i,j}:=v_iv_j/(\|v_i\|\|v_j\|)$, where $v_i$ and $v_j$ are vectors corresponding to $i$-th and $j$-th item, respectively. Our goal is to express $S_I$ in terms of $R$, $P$, and $Q$. Note that $(R^\text{T}R)_{i,j}=v_iv_j$ and that $(Q^{-1/2})_{i,i}=1/\sqrt{v_iv_i}=1/\|v_i\|$. Note that applying $Q^{-1/2}$ to $R^\text{T}R$ from the right gives us $((R^\text{T}R)Q^{-1/2})_{i,j}=v_iv_j/\|v_j\|$. Applying $Q^{-1/2}$ from the left gives us $Q^{-1/2}(R^\text{T}R)=v_iv_j/\|v_i\|$. This menas that $S_I=Q^{-1/2}((R^\text{T}R)Q^{-1/2})$, since $(Q^{-1/2}((R^\text{T}R)Q^{-1/2}))_{ij}=v_iv_j/(\|v_i\|\|v_j\|)$. We can thus write
+			\begin{equation}
+				S_I=Q^{-1/2}((R^\text{T}R)Q^{-1/2}).
+			\end{equation}
+			
+			We now do the same thing for $S_U$, i.e., the $m\times m$ similarity matrix for users. As before, note that $(RR^\text{T})_{i,j}=u_iu_j$, where $u_i$ and $u_j$ represent $i$-th and $j$-th user, respectively. Since $(P^{-1/2})_{ii}=1/\|u_i\|$, we get --- by the same reasoning as for $S_I$ above --- that $S_U=P^{-1/2}((RR^\text{T})P^{-1/2})$, because $(P^{-1/2}((RR^\text{T})P^{-1/2}))_{i,j}=u_iu_j/(\|u_i\|\|u_j\|)$. We thus have
+			\begin{equation}
+				S_U=P^{-1/2}((RR^\text{T})P^{-1/2}).
+			\end{equation}
+			\item For user-user collaborative recommendation, we let
+				\begin{equation*}
+					r_{u,s} := \sum_{x\in U}\cos(x,u)R_{x,s}.
+				\end{equation*}
+				We know that $(S_U)_{i,j}=\cos(u_i,u_j)$, where $u_i$ denotes $i$-th user. Note that
+				\begin{equation*}
+					(S_UR)_{us} = \sum_{x=1}^m(S_U)_{ux}R_{xs} = \sum_{x=1}^m\cos(x,s)R_{xs}=r_{u,s},
+				\end{equation*}
+				where $u$ is $u$-th user and $s$ is $s$-th user. This proves that for user-user collaborative filtering we have
+				\begin{equation}
+					\Gamma = S_UR.
+				\end{equation}
+				
+				For item-item collaborative recommendation we define
+				\begin{equation*}
+					r_{u,s} := \sum_{x\in I}R_{u,x}\cos(x,s).
+				\end{equation*}
+				As before, we know that $(S_I)_{i,j}=\cos(v_i,v_j)$, where $v_i$ denotes $i$-th item. Note that
+				\begin{equation*}
+					(RS_I)_{us} = \sum_{x=1}^nR_{ux}(S_I)(xs) = \sum_{x=1}^nR_{ux}\cos(x,s)=r_{u,s},
+				\end{equation*}
+				where $u$ denotes $u$-th user and $s$ denotes $s$-th item. This proves that for item-item collaborative filtering we have
+				\begin{equation}
+					\Gamma = RS_I.
+				\end{equation}
+			\item Define $T:=RR^\text{T}$ as the non-normalized user similarity matrix. Explain the meaning of $T_{i,i}$ and $T_{i,j}$ for $i\neq j$ in terms of bipartite structures --- what these mean in terms of node degrees, path between nodes, etc. Note that $T_{i,i}=(RR^\text{T})_{i,i}=\sum_{k}R_{ik}(R^\text{T})_{ki}$ is the number of items that user $i$ likes, i.e., degree of user node $i$ in the bipartite graph.
+			
+			For $i\neq j$ we have $T_{i,j}=(RR^\text{T})_{i,j}=\sum_{k}R_{ik}(R^\text{T})_{kj}$ equal to number of items that both $i$ and $j$ like. In graph-theoretic language, $T_{i,j} = |N_G(u_i)\cap N_G(u_j)|$, i.e., the number of nodes that are at distance\footnote{Distance between $i$ and $j$ in such an undirected graph is defined as the number of edges on the shortest path between $i$ and $j$.} $1$ from both $i$ and $j$.\footnote{In our case we even have that the graph is bipartite and we know that $i$ and $j$ belong to the same partition, so it is possible that $T_{ij}$ is some well-known property. But the author is not that comfortable with graph theory.}
+			\item See listing~\ref{lst:hw2q1} for the code we used. 
+			The five TV shows that have the highest similarity scores for Alex for \emph{user-user collaborative filtering}:
+			\begin{enumerate}[(i)]
+				\item \texttt{FOX 28 News at 10pm} with score $\mathtt{908.4801}$.
+				\item \texttt{Family Guy} with score $\mathtt{861.1760}$.
+				\item \texttt{2009 NCAA Basketball Tournament} with score $\mathtt{827.6013}$.
+				\item \texttt{NBC 4 at Eleven} with score $\mathtt{784.7820}$.
+				\item \texttt{Two and a Half Men} with score $\mathtt{757.6011}$.
+			\end{enumerate}
+			The five TV shows that have the highest similairt scores for Alex for \emph{item-item collaborative filtering}:
+			\begin{enumerate}[(i)]
+				\item \texttt{FOX 28 News at 10pm} with score $\mathtt{31.3647}$.
+				\item \texttt{Family Guy} with score $\mathtt{30.0011}$.
+				\item \texttt{NBC 4 at Eleven} with score $\mathtt{29.3968}$.
+				\item \texttt{2009 NCAA Basketball Tournament} with score $\mathtt{29.2270}$.
+				\item \texttt{Access Hollywood} with score $\mathtt{28.9713}$.
+			\end{enumerate}
+			
+			The precision at top-$k$ as a function of $k\in[1,19]$ is shown in figure~\ref{fig:hw2q1}.
+			\begin{figure}
+				\centering
+				\includegraphics[scale=0.95]{hw2q1.eps}
+				\caption{Precision at top-$k$ for user-user (blue) and item-item (red) collaborative filtering.}
+				\label{fig:hw2q1}
+			\end{figure}
+			
+			The precision at top-$k$ is about $0.4$ for $k=19$ for both methods, meaning that Alex watched roughly $2/5$ of shows with the highest scores. Both precisions --- precision at top-$k$ for user-user and item-item collaborative filtering --- converge to the same value. They seem to give roughly the same recommendations, which makes intuitive sense --- similar people (that is people with similar tastes) watch similar shows. 
+			
+			\lstinputlisting[label=lst:hw2q1,caption={Code for HW2Q1.},language=MATLAB,frame=single,tabsize=2,basicstyle=\footnotesize,numbers=left]{hw2q1.m}
+		\end{enumerate}
+	\section{Singular Value Decomposition}
+		We consider each point in turn. We use notation from HW2Q2 text, writing $I_r$ for $r\times r$ identity matrix, etc.
+		\begin{enumerate}[(a)]
+			\item We find the SVD using $AA^\text{T}=A^\text{T}A$ for $A\in\mathbb{R}^{m\times n}$.
+			\begin{enumerate}[1)]
+				\item Let $K:=AA^\text{T}\in\mathbb{R}^{m\times m}$ and $C:=A^\text{T}A\in\mathbb{R}^{n\times n}$. Since $(C^\text{T})_{ij}=C_{ij}$ for arbitrary $1\le i,j\le n$, we have
+				\begin{equation*}
+					C_{ij}=\sum_{k=1}^m A_{ik}(A^\text{T})_{kj}=\sum_{k=1}^m A_{ik}A_{jk} = \sum_{k=1}^m(A^\text{T})_{ki}A_{jk}=\sum_{k=1}^m A_{jk}(A^\text{T})_{ki}=C_{ji}=(C^\text{T})_{ij},
+				\end{equation*}
+				meaning that $C=C^\text{T}$, so $C$ is symmetric. The proof that $K$ is symmetric is the same:
+				\begin{equation*}
+					K_{ij}=\sum_{k=1}^n A_{ik}(A^\text{T})_{kj}=\sum_{k=1}^n A_{ik}A_{jk}=\sum_{k=1}^n A_{jk}(A^\text{T})_{ki}=K_{ji}.
+				\end{equation*}
+				Simpler way to see this is $(AA^\text{T})^\text{T}=AA^\text{T}$ and $(A^\text{T}A)^\text{T}=A^\text{T}A$, which follow from basic algebraic properties of matrix multiplication.
+				
+				Next, note that $AA^\text{T}=USV^\text{T}VS^\text{T}U^\text{T}=US^2U^\text{T}$, since $S=S^\text{T}$ and $SI_r=I_rS=S$. By the same reasoning we get $A^\text{T}A=VS^2V^\text{T}$. This means that $S^2$ contains eigenvalues of both $C$ and $K$, that $U$ contains eigenvectors of $C$ as columns, and that $V$ contains eigenvectors of $K$ as columns. Let $k=\arg\min_k\{\sigma_k~|~\sigma_k>0\}$. Since $\sigma_1\ge\sigma_2\ge\ldots\ge\sigma_r$, the nonzero eigenvalues are exactly $\sigma_1\ge\ldots\ge\sigma_k>0$ with the corresponding (nonzero) eigenvectors $u_1,\ldots,u_r$.
+				\item We should take $K$ if $m\le n$, and $C$ otherwise. Since we assumed $m=100$ and $n=100000$, we should take $K$ in this case. 
+				\item First compute $C:=A^\text{T}A$ and its eigenvalue decomposition $C=Q_C\Sigma_C Q_C^\text{T}$, which equals $VS^2V^\text{T}$ for unknown $V$ and $\Sigma$, equality following because of SVD: $A=U\Sigma V^\text{T}$. We trivially have $V=Q_C$. We can thus express $S = \Sigma^{1/2}$ and $U=A(SV^\text{T})^{-1}=A(VS^{-1})$.
+				\item Let $K:=AA^\text{T}$ compute its eigenvalue decomposition $Q_K\Sigma_K Q_K^\text{T}$. Since $A=USV^\text{T}$ we have $K=US^2U^\text{T}$ for some $U,S,V$. Similarly as before, we trivially have $U=Q_K$ and $S=\Sigma_K^{1/2}$. Similarly as before we have $V=((US)^{-1})A)^\text{T}=A^\text{T}(US^{-1})$. 
+			\end{enumerate}
+			\item Document similarity using SVD; see listing~\ref{lst:hw2q2} for code of this section. See figure~\ref{fig:hw2q2} for the plot of $r(k)$ for $k\in\{197, 247, 297, 347, 397, 447, 497\}$. We get highest $r=r(k)$ for $k=347$, i.e., when we reconstruct $I$ using the highest $347$ singular values. This could mean that we got rid of the noise by ignoring the ``lower'' singular values. 
+			\lstinputlisting[label=lst:hw2q2,caption={Code for HW2Q1.},language=MATLAB,frame=single,tabsize=2,basicstyle=\footnotesize,numbers=left]{hw2q2.m}
+			\begin{figure}
+				\centering
+				\includegraphics[scale=0.9]{hw2q2.eps}
+				\caption{Plot of $r=r(k)$ for $k\in\{197, 247, 297, 347, 397, 447, 497\}$.}
+				\label{fig:hw2q2}
+			\end{figure}
+		\end{enumerate}
+	\section{Theory of $k$-means}
+		We have an $n$-set $\mathcal{X}$ of points from $\mathbb{R}^d$ and a number of clusters $k$. We want to choose a set of $k$ centers $\mathcal{C}$ that minimize the function
+		\begin{equation}
+			\phi := \sum_{x\in\mathcal{X}}\min_{c\in\mathcal{C}}\|x-c\|^2,
+		\end{equation}
+		where $\|x\|:=\|x\|_2$ denotes $L_2$-norm of $x$. In what follows we often use the fact that $\|x\|=\|-x\|$. (This allows us to be sloppy and write things like $\|x-y\|=\|y-x\|$.)
+		\begin{enumerate}[1)]
+			\item We now prove the following identity:
+			\begin{equation}\label{eq:hw2q2i2}
+				\sum_{x\in S}\|x-z\|^2-\sum_{x\in S}\|x-c(S)\|^2=|S|\cdot\|z-c(S)\|^2,
+			\end{equation}
+			where $c(S):=\frac{1}{|S|}\sum_{x\in S}x$ and $S\subseteq\mathbb{R}^d$, and $z\in\mathbb{R}^d$. Note that
+			\begin{align*}
+				&|S|\cdot\|z-c(S)\|^2 - \sum_{x\in S}\left(\|x-z\|^2-\|x-c(S)\|^2\right) \\
+					&= \sum_{x\in S}\left(\|z-c(S)\|^2-\|x-z\|^2+\|x-c(S)\|^2\right) \\
+					&= \sum_{x\in S}\left((x-c(S))^2-(x-z)^2+(x-c(S))^2\right) \\
+					&= 2\sum_{x\in S}\left(\|c(S)\|^2-zc(S)-xc(S)+xz\right) \\
+					&= 2|S|\cdot\left(\|c(S)\|^2-zc(S)\right)+2\sum_{x\in S}(xz-xc) \\
+					&= 2|S|\cdot\left(\|c(S)\|^2-zc(S)\right)+2|S|\cdot c(S)z-2|S|\cdot\|c(S)\|^2 \\
+					&= 0,
+			\end{align*}
+			thus establishing~\eqref{eq:hw2q2i2}. (Note that we wrote $\sum_{x\in S}xz=z|S|\frac{1}{|S|}\sum_{x\in S}x=|S|zc(S)$; similarly $\sum_{x\in S}xc(S)=c(S)|S|\frac{1}{|S|}\sum_{x\in S}x=c(S)c(S)=\|c(S)\|^2$.)
+			\item Let $\phi_t:=\sum_{x\in\mathcal{X}}\min_{c\in\mathcal{C}_t}\|x-c\|^2$ be the objecitve function in the $t$-th iteration, where $\mathcal{C}_t$ is the set of centroids in this iteration and $C_i^t$ is the set of points assigned to $i$-th centroid in $t$-th iteration, i.e., let $C_i^t$ be the cluster in $t$-th iteration that corresponds to $i$-th centroid. We now prove that $\phi_t\ge\phi_{t+1}$ for all $t\ge0$. First note that by~\eqref{eq:hw2q2i2} we have
+			\begin{align*}
+				\phi_t &= \sum_{x\in\mathcal{X}}\min_{x\in\mathcal{C}_t}\|x-c\|^2 \\
+					&= \sum_{i=1}^k \sum_{x\in C_i^t}\|x-c(C_i^{t-1})\|^2 \\
+					&= \sum_{i=1}^k\left(|C_i^t|\cdot\|c(C_i^{t-1})-c(C_i^t)\|^2+\sum_{x\in C_i^t} \|x-c(C_i^t)\|^2\right),
+			\end{align*}
+			implying
+			\begin{align*}
+				\sum_{x\in C_i^t}\|x-c(C_i^{t-1})\|^2 &\ge \sum_{x\in C_i^t}\|x-c(C_i^t)\|^2 \\
+					&\ge\sum_{x\in C_i^t}\min_{x\in\mathcal{C}_{t+1}}\|x-c\|^2,
+			\end{align*}
+			because $c(C_i^t)\in\mathcal{C}_{t+1}$, i.e., $c(C_i^t)$ will be one of the centers in the $(t+1)$-th iteration. We thus have
+			\begin{align*}
+				\phi_t &= \sum_{i=1}^k\sum_{x\in C_i^t}\|x-c(C_i^{t-1})\|^2 \\
+					&\ge\sum_{i=1}^k\sum_{x\in C_i^t}\min_{c\in\mathcal{C}_{t+1}}\|x-c\|^2 \\
+					&= \sum_{x\in\mathcal{X}}\min_{c\in\mathcal{C}_{t+1}}\|x-c\|^2 \\
+					&= \phi_{t+1},
+			\end{align*}
+			establishing $\phi_t\ge\phi_{t+1}$ for all $t$, since $t$ was arbitrary. (Several times we used the obvious fact that the clusters $C_1^t,\ldots,C_k^t$ form partition of $\mathcal{X}$ in each iteration $t$.)
+			\item We now show that when running $k$-means, the objective function converges to a finite value. Note that we trivially have $\phi_t\ge0$ for all $t$, because $\phi_t$ is a sum of squared terms. Since $\phi_t\ge\phi_{t+1}$ for all $t$, we have that the sequence $\{\phi_t\}_{t\ge0}$ is monotonically decreasing and bounded from below. The convergence of $\{\phi_t\}_{t\ge0}$ follows from the well-known bounded monotone convergence theorem, stating that \emph{every bounded monotonic sequence of real numbers is convergent}, because our sequence is both monotonically decreasing and bounded.\footnote{Note that it is fine to say bounded because $\{\phi_t\}_{t\ge0}$ is also bounded from above by $n\max_{x,y\in\mathcal{X}}\|x-y\|^2$, but this is not very relevant to our discussion.} We conclude that $\{\phi_t\}_{t\ge0}$ converges to $C$ for some $C\in[0,n\max_{x,y\in\mathcal{X}}\|x-y\|^2]$. (We showed that there \emph{exists} some (finite) value $0\le C\le n\max_{x,y\in\mathcal{X}}\|x-y\|^2$ such that $\phi_t$ converges to $C$.)
+			
+			We now argue (heuristically) that $k$-means converges, i.e., that the algorithm reaches a state where the centroids do not change. If all ``terms'' of the cost function do not change --- if $C_i^t$ and $C_i^{t+1}$ all have the same contributions for all $i$, i.e., for each cluster --- then the algorithm will not change clusters anymore. Our reasoning is very hand-wavy:
+			\begin{itemize}
+				\item The fact that objective function value remains the same, i.e., $\phi_t=\phi_{t+1}$ , does not imply that all the ``terms'' remain the same.
+				\item In the previous paragraph we showed that $\{\phi_t\}_{t\ge0}$ converges to some (finite) value $C\in\mathbb{R}_0^+$. This means that for every $\epsilon>0$ there exists $N\ge0$ such that for all $t\ge N$ we have $\phi_t-C<\epsilon$. We \emph{have not} shown $\phi_t=\phi_{t+1}$ for all sufficiently large $t$.
+			\end{itemize}
+			However, we believe that our reasoning is sufficient for the purposes of heuristic argument that this part of the question asks for.
+			\item Finally, we show that for arbitrary $r>1$ there is a ``bad'' initialization that will give at leat $r$-times larger cost than the optimal clustering. The idea is extremely simple.
+			
+			Suppose we have $k$ ``uniformly filled'' disks of $n$ points $D_i\subseteq\mathbb{R}^2$ for fixed $k>0$, and the first $k-1$ disks have center of the form $(x_0, 0)$ and all have the same radius, i.e., they lie on a horizontal line. Also suppose that the distance between $c(D_i)$ and $c(D_{i+1})$ is $d>0$ for all $1\le i\le k-2$. Suppose $k$-th disk is centered at $(0, y_k)$ and is farther than $d$ away from all other disks. (See figure~\ref{fig:hw2q3} for sketch of our setup.) The rough structure of the optimal clustering is obvious: Place $i$-th center in the center of the disk $D_i$. Let $\phi_0$ be the cost of the optimal clustering.
+			
+			Let $r>1$ be an arbitrary real number. We now show how to arrange the points $D_i$ and pick the centers $c_1,\ldots,c_k$ so that the cost of the resulting clustering will be at least $r\phi_0$. Place the first center, $c_1=(x_1,0)$, in the middle of the line. Now set the remaining $k-1$ centers $c_i:=(0, y_i)$ inside the outlier disk $D_k$. It should now be obvious that all the points from $D_1\cup\ldots\cup D_k$ will belong to a single cluster, i.e., the one that corresponds to the center $c_1$, while points from $D_k$ will be partitioned into $k-1$ clusters corresponding to $c_2,\ldots,c_k$. With such an initialization the center $c_1$ will never move. Now stretch the disks of points $D_1,D_2,\ldots,D_{k-1}$ farther apart --- sets of points $D_i$ and $D_{i+1}$ are still equally spaced (we move the whole disks $D_i$, so local structure is presrved), but the distance between them is now larger --- so that $\sum_{x\in\cup_{i=1}^{k-1}D_i}\|x-c_1\|\ge r\phi_0$. (It is worth noting that the optimal cost $\phi_0$ also increases; the trick is that $\phi_0$ is increasing much slower than $\sum_{x\in\cup_{i=1}^{k-1}D_i}\|x-c_1\|$.) This is obviously achievable.  The cost of the resulting clustering with such an initialization will thus be at least $r\phi_0$, where $\phi_0$ is the cost of the optimal clustering. 
+			
+			We have shown that we can pick centers in such a way that $k$-means gives arbitrarily bad clustering. Our example was in $\mathbb{R}^2$ with some fixed $k\in\mathbb{K}$.
+			
+			\begin{figure}
+				\centering
+				\includegraphics[scale=0.35]{hw2q3.eps}
+				\caption{Rough sketch of our setup.}
+				\label{fig:hw2q3}
+			\end{figure}
+		\end{enumerate}
+	\section{$k$-means on MapReduce}
+		\begin{enumerate}[(a)]
+			\item See the appendix for source code. Our solution consists of the main class \texttt{KMeans} (see listing~\ref{code:kmeans}) and the helper class \texttt{Point} (see listing~\ref{code:point}). Note that reducer ouputs pairs $(c_i^{t-1},c_i^t)$, where $c_i^t$ denotes $i$-th center in $t$-th iteration. We used \path{hadoop jar ~/workspace/kmeans/target/kmeans-0.0.1-SNAPSHOT.jar homework\_hw2.kmeans.kmeans.KMeans -D mapred.job.tracker=local -D fs.defaultFS=local} to run Hadoop. See source code for details regarding directory structure. We assume all data resides in \path{/home/cloudera/Documents/hw-2/}.
+			\item We compare costs $\phi_t$ for $t=1,2,\ldots,20$ for initializations \texttt{c1.txt} (red) \texttt{c2.txt} (blue) on figure~\ref{fig:hw2q4i2}.
+			\begin{figure}
+				\centering
+				\includegraphics[scale=0.35]{hw2q4i2.eps}
+				\caption{Plot of the cost as a function of the number of iterations of $k$-means when initialized with \texttt{c1.txt} (red) and \texttt{c2.txt} (blue).}
+				\label{fig:hw2q4i2}
+			\end{figure}
+			\item It is clear from figure~\ref{fig:hw2q4i2} that random initialization \texttt{c1.txt} is not better than \texttt{c2.txt}. An intuitive reason for $k$-means initialized with \texttt{c2.txt} performing better than the one initialized with \texttt{c1.txt} could be that the centroids \texttt{c2.txt} better ``cover'' the dataset, thus allowing $k$-means to discover good clusters, while we could have bad luck when picking \texttt{c1.txt}. When initialized with \texttt{c1.txt} the percentage change in cost is $10.183\%$, i.e., the cost drops for $\approx10.2\%$ if instead of the initial ones we use centroids obtained after $10$ iterations of $k$-means. For \texttt{c2.txt} the cost drops $\approx60.7\%$ if instead of the initial ones we use centroids obtained after $10$ iterations of $k$-means. 
+			\item For the second document we would apply the following 5 tags:
+			\begin{enumerate}[(i)]
+				\item \texttt{instillation},
+				\item \texttt{methoxyfenozide},
+				\item \texttt{sodium-sensitive},
+				\item \texttt{masses},
+				\item \texttt{post-infectious}.
+			\end{enumerate}
+			These were generated using code from listing~\ref{code:tags}. The code uses clusters computed in $20$-th iteration by $k$-means on Hadoop when initialized with \texttt{c1.txt}. 
+		\end{enumerate}
+\appendix
+\section{Source code for question $4$}
+	To make grader's life easier, this appendix contains source code associated with the last question.
+	\subsection{Implementation of $k$-means on MapReduce}
+		\lstinputlisting[language=Java,numbers=left,tabsize=2,basicstyle=\footnotesize,frame=single,caption={Source of the helper class \texttt{Point.java}.},label={code:point},breaklines=true]{Point.java}
+		\lstinputlisting[language=Java,numbers=left,tabsize=2,basicstyle=\footnotesize,frame=single,caption={Source of the main class \texttt{KMeans.java}.},label={code:kmeans},breaklines=true]{KMeans.java}
+	\subsection{Computing $\phi(i)$ at each iteration}
+		Since the \texttt{Point.java} remains the same as in listing~\ref{code:point}, we only include the slightly changed \texttt{KMeans.java}. See listing~\ref{code:kmeans-b}.
+		\lstinputlisting[language=Java,numbers=left,tabsize=2,basicstyle=\footnotesize,frame=single,caption={Source of the main class \texttt{KMeans.java}.},label={code:kmeans-b},breaklines=true]{KMeans-cost.java}
+	\section{Automatically tagging documents}
+		We wrote a simple python script that uses centroids computed on hadoop to find the tags. See listing~\ref{code:tags}.
+		\lstinputlisting[language=python,numbers=left,tabsize=2,basicstyle=\footnotesize,frame=single,caption={Source of the main class \texttt{KMeans.java}.},label={code:tags},breaklines=true]{tags.py}
+
+\bibliographystyle{alpha}
+\bibliography{refs}
+\end{document}
