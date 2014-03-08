@@ -1,0 +1,178 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amsthm}
+\usepackage{enumerate}
+\usepackage{graphicx}
+\usepackage{epstopdf}
+
+\DeclareMathOperator{\E}{\mathbb{E}}
+\DeclareMathOperator{\Conv}{conv}
+\DeclareMathOperator{\Conf}{conf}
+\DeclareMathOperator{\Sim}{sim}
+\DeclareMathOperator{\Lift}{lift}
+\DeclareMathOperator{\support}{Support}
+\newcommand\conf[2]{\Conf(#1\rightarrow #2)} % confidence
+\newcommand\lift[2]{\Lift(#1\rightarrow #2)} % lift
+\newcommand\conv[2]{\Conv(#1\rightarrow #2)} % lift
+
+\begin{document}
+	\input{cover.tex}
+	
+	\section{MapReduce}
+		\paragraph{Algorithm.} Assuming the input format from HW1 text, the algorithm works as follows.
+		\begin{itemize}
+			\item Mapper. Given $U\text{\texttt{<TAB>}}F_1,\ldots,F_n$, it generates all pairs $(F_i, (U, F_j))$ for $i\neq j$, meaning that $F_i$ and $F_j$ have mutual friend $U$. Friendless people and people with a single friend require special handling --- in such cases the mapper simply passes $(U, U)$ or $(F_i, U)$, just so reducers get all IDs. (See source code for details.) 
+			\item Reducer. Given $(F, [(U_1, F_1), \ldots, (U_m, F_m)])$, reducer removes all $F_i$'s that are $F$'s friends --- it achieves this by checking whether $F_i=U_j$ for some $i\neq j$ using hash table --- and then counts the number of mutual friends $F$ and $F_i$ have in common. It then sorts the resulting list of pairs $(F_i, c(F_i))$, where $c(F_i)$ is the number of friends $F$ and $F_i$ have in common, in decreasing order by $c(F_i)$ and outputs (i.e., recommends) the first ten people from the sorted list: $(F, [F'_1,\ldots,F'_{10}])$. In case of a tie, it sorts by ID's increasingly. (Note that friendless people and people with a single friend require special handling; see source code for details.)
+		\end{itemize}
+		
+		\paragraph{Recommendations.} The list of selected recommendations follows:
+		\begin{itemize}
+			\item 924: 439,2409,6995,11860,15416,43748,45881
+			\item 8941: 8943,8944,8940
+			\item 8942: 8939,8940,8943,8944
+			\item 9019: 9022,317,9023
+			\item 9020: 9021,9016,9017,9022,317,9023
+			\item 9021: 9020,9016,9017,9022,317,9023
+			\item 9022: 9019,9020,9021,317,9016,9017,9023
+			\item 9990: 13134,13478,13877,34299,34485,34642,37941
+			\item 9992: 9987,9989,35667,9991
+			\item 9993: 9991,13134,13478,13877,34299,34485,34642,37941
+		\end{itemize}
+	
+	\section{Association rules}
+		\begin{enumerate}[(a)]
+			\item We consider each measure in turn.
+				\begin{itemize}
+					\item \emph{Confidence.} The problem with confidence ignoring $\Pr[B]$ is that even if $\conf{A}{B}$ is high, $A$ may have no influence on $B$, i.e., the fraction of baskets that contain both $A$ and $B$ is roughly the same as the fraction of baskets that contain $B$. (One solution to this is \emph{interest} of a rule, defined as $\conf{A}{B}-S(B)$.)
+					\item \emph{Lift.} Lift divides confidence of a rule $A\to B$ with $S(B)$, so if $A$ has no influence on $B$, we get $\lift{A}{B}=1$. If $A$ has negative influence on $B$, then lift is less than one; otherwise, if $A$ has positive influence on $B$, lift is greater than one. 
+					\item \emph{Conviction.} If $A$ has no influence on $B$, then $\conv{A}{B}=1$. However, if $A$ does influence $B$, then conviction will be either greater than one (positive influence) or less than one (negative influence). 
+				\end{itemize}
+			\item We consider each measure in turn. 
+				\begin{itemize}
+					\item \emph{Confidence.} Clearly $\conf{A}{B}\neq\conf{B}{A}$, i.e., confidence is not symmetrical. To see this, suppose $\support(A\cup B)=\support(A)=1$ and $\support(B)=6$. Then $\conf{A}{B}=1/6\neq1=\conf{B}{A}$. (For example of such a rule, see~\cite[example 6.1, page 200]{rajaraman2013mining}, where $\conf{\{cat\}}{kitten}\neq\conf{\{kitten\}}{cat}$.) More intuitively, the probability of seeing $B$ given $A$ is, in general, not the same as the probability of seeing $A$ given $B$. 
+					\item \emph{Lift.} Intuitively, $\Lift$ is symmetrical because it measures how much more $A$ and $B$ appear together than they would if they were statistically independent. More formally,
+						\begin{align*}
+							\lift{A}{B} &= \frac{\conf{A}{B}}{S(B)} \\ % =\frac{\conf{B}{A}}{S(A)} \\
+								&= \frac{N\support(A\cup B)}{\support(A)\support(B)} \\ % =\frac{N\support(B\cup A)}{\support(B)\support(A)},% \\
+								&=\lift{B}{A} 
+								%&\Longleftrightarrow \support(A\cup B)=\support(B\cup A),
+						\end{align*}
+						implying that $\Lift$ is symmetrical.
+					\item \emph{Conviction.} Conviction is not symmetrical because it compares ``how much $A$ appears without $B$'', which is in general not the same as ``how much $B$ appears without $A$''. To get counterexample, let us take the toy data~\cite[example 6.1, page 200]{rajaraman2013mining} and consider $\conv{\{cat\}}{dog}=3/20$ and $\conv{\{dog\}}{cat}=7/20$. 
+				\end{itemize}
+			\item We consider each measure in turn.
+				\begin{itemize}
+					\item \emph{Confidence.} First note that $0\le \conf{A}{B}\le 1$. Suppose $B$ appears in all transactions in which $A$ apperas, meaning that rule holds 100\% of the time. This means $\support(A)=\support(A\cup B)$, implying $\conf{A}{B}=1$. So confidence is desirable. 
+					\item \emph{Lift.} Suppose $A\rightarrow B$ always holds. Then $\lift{A}{B}=1/S(B)=N/\support(B)$, since we have $\conf{A}{B}=1$. Suppose now $A'\rightarrow B'$ is another (different) rule that always holds and suppose that $\support(B)\neq\support(B')$. It follows $\lift{A}{B}\neq\lift{A'}{B'}$, meaning that $\Lift$ is not desirable. Let us again take~\cite[example 6.1, page 200]{rajaraman2013mining} and consider $\lift{\{cat\}}{dog}=1/(7/8)=8/7$, while $\lift{\{bites\}}{cat}=1/(6/8)=8/6$; note that both rules always hold in the data. 
+					\item \emph{Conviction.} Suppose $A\rightarrow B$ holds all the time. Then $\conf{A}{B}=1$, giving us $\conv{A}{B}=(1-S(B))/0:=+\infty$, i.e., we \emph{define} such expressions to have value $+\infty$, which we treat as greater than any real number. This means $\Conv$ is desirable. 
+				\end{itemize}
+			\item Top $5$ rules with corresponding confidence scores in decreasing order of confidence score for itemsets of size $2$.
+			\begin{enumerate}[(1)]
+				\item $\{\text{DAI93865}\}\to\{\text{FRO40251}\}$, with confidence $1.0$
+				\item $\{\text{GRO85051}\}\to\{\text{FRO40251}\}$, with confidence $0.999176276771005$
+				\item $\{\text{GRO38636}\}\to\{\text{FRO40251}\}$, with confidence $0.9906542056074766$
+				\item $\{\text{ELE12951}\}\to\{\text{FRO40251}\}$, with confidence $0.9905660377358491$
+				\item $\{\text{DAI88079}\}\to\{\text{FRO40251}\}$, with confidence $0.9867256637168141$
+			\end{enumerate}
+			\item Top $5$ rules with corresponding confidence scores in decreasing order of confidence score for itemsets of size $3$. (See HW1 text for how break ties.)
+			\begin{enumerate}[(1)]
+				\item $\{\text{DAI23334}, \text{ELE92920}\}\to\{\text{DAI62779}\}$, with confidence $1.0$
+				\item $\{\text{DAI31081}, \text{GRO85051}\}\to\{\text{FRO40251}\}$, with confidence $1.0$
+				\item $\{\text{DAI55911}, \text{GRO85051}\}\to\{\text{FRO40251}\}$, with confidence $1.0$
+				\item $\{\text{DAI62779}, \text{DAI88079}\}\to\{\text{FRO40251}\}$, with confidence $1.0$
+				\item $\{\text{DAI75645}, \text{GRO85051}\}\to\{\text{FRO40251}\}$, with confidence $1.0$
+			\end{enumerate}
+		\end{enumerate}
+	\section{Locality-Sensitive Hashing}
+		We define LSH scheme as a family $\mathcal{F}$ of hash functions such that for any two objects $x$ and $y$ we have
+		\begin{equation*}
+			\Pr_{h\in\mathcal{F}}[h(x)=h(y)]=\Sim(x,y),
+		\end{equation*}
+		where $\Sim$ is a similarity function that maps pairs of objects to real numbers from the unit interval. 
+		\begin{enumerate}[(a)]
+			\item Let $\Sim$ be a similarity function and let $d(x,y):=1-\Sim(x,y)$. Suppose there exist $x,y,z$ such that $d(x,y)+d(y,z)<d(x,z)$, i.e., $d$ violates triangle inequality. First note that $\Pr_{h\in\mathcal{F}}[h(x)\neq h(y)]=d(x,y)$. We thus have
+				\begin{align*}
+					\Pr_{h\in\mathcal{F}}[h(x)\neq h(y)~\lor~h(y)\neq h(z)] &\le \Pr_{h\in\mathcal{F}}[h(x)\neq h(y)]+\Pr_{h\in\mathcal{F}}[h(y)\neq h(z)] \\
+						&<\Pr_{h\in\mathcal{F}}[h(x)\neq h(z)]\le 1,
+				\end{align*}
+				which gives us
+				\begin{equation*}
+					\Pr_{h\in\mathcal{F}}[h(x)=h(y)\land h(y)=h(z)]>1-\Pr_{h\in\mathcal{F}}[h(x)\neq h(z)]=\Pr_{h\in\mathcal{F}}[h(x)=h(z)].
+				\end{equation*}
+				But this is absurd, because `$h(x)=h(z)$' is subevent of `$h(x)=h(y)\land h(y)=h(z)$', i.e., the latter implies the former, meaning that the former is at least as likely as the latter. This contradiction establishes our claim. 
+			\item Now we are going to show that $\Sim_{\text{Over}}(A,B)=|A\cap B|/\min(|A|,|B|)$ does not have a LSH scheme. Let $A:=\{a_1,a_2,a_3\}$, $C:=\{c_1,c_2,c_3\}$ and $B:=\{a_1,a_2,c_1,c_2\}$. Then $|A\cap B|=|B\cap C|=2$ and $|A\cap C|=0$, while $|A|=|B|=|C|=3$, so $(1-\Sim_{\text{Over}}(A,B))+(1-\Sim_{\text{Over}}(B,C))=2/3$ and $1-\Sim_{\text{Over}}(A,C))=1-0=1$, violating triangle inequality. By (a) there is no LSH scheme for this measure. 
+			\item Now we do the same for $\Sim_{\text{Dice}}(A,B)=2|A\cap B|/(|A|+|B|)$. Same as before, let $A:=\{a_1,a_2,a_3\}$, $C:=\{c_1,c_2,c_3\}$ and $B:=\{a_1,a_2,c_1,c_2\}$, so that $1-\Sim_{\text{Dice}}(A,B)=1-\Sim_{\text{Dice}}(B,C)=3/7$ and $1-\Sim_{\text{Dice}}(A,C)=1$. Since $6/7<1$, the function $1-\Sim_{\text{Dice}}$ violates triangle inequality and by (a) there can be no LSH scheme for it.
+		\end{enumerate}
+	\section{LSH for Approximate Near Neighbour Search}
+		In what follows we use notation from HW1 text. We set $[L]:=\{1,2,\ldots,L\}$ for convinience.
+		\begin{enumerate}[(a)]
+			\item Let $W_j:=\{x\in\mathcal{A}~|~g_j(x)=g_j(z)\}$ for $1\le j\le L$ and let $T:=\{x\in\mathcal{A}~|~d(x,z)>c\lambda\}$. The goal is to prove
+				\begin{equation*}
+					\Pr\left[\sum_{j=1}^L|T\cap W_j|\ge 3L\right]\le\frac{1}{3},
+				\end{equation*}
+				which means $1/3$ is an upper bound on the probability that hash functions give ``many'' false positives. By Markov's inequality we have
+				\begin{align*}
+					\Pr\left[\sum_{j=1}^L|T\cap W_j|\ge 3L\right]\le\frac{1}{3L}\E\left[\sum_{j=1}^L |T\cap W_j|\right]=\frac{1}{3L}\sum_{j=1}^L \E[|T\cap W_j|].
+				\end{align*}
+				(Note that we view $|T\cap W_j|$ as a random variable and that $|T\cap W_j|\ge 0$ and $3L>0$, thus satisfying conditions for Markov's inequality.) It now suffices to show $\E[|T\cap W_j|]\le 1$ for all $1\le j\le L$. For each $x_i\in\mathcal{A}$ define $X_i=1$ if $x_i\in W_j\cap T$ and $X_i=0$ otherwise, and let $X=X_1+\ldots+X_n$. We thus have
+				\begin{align*}
+					\E[|T\cap W_j|] = \E[X] = \E\left[\sum_{i=1}^n X_i\right] = \sum_{i=1}^n \E[X_i]\le np_2^k\le 1,
+				\end{align*}
+				thus establishing the claim. To see that $np_2^k\le1$, suppose $np_2^k>1$. Then $n>1/p_2^k$, implying $\log n>k\log (1/p_2)=\log(1/p_2)\frac{\log n}{\log(1/p_2)}=\log n$, which is absurd. (Here we used $k=\log_{1/p_2}(n)=\log n/\log(1/p_2)$.)
+			\item Let $x^\star\in\mathcal{A}$ be a point such that $d(x^\star,z)\le\lambda$. The goal here is to get a lower bound on the probability that at least one hash function maps $x^\star$ and $z$ to the same bucket. Because $\mathcal{G}=\mathcal{H}^k$ and $\mathcal{H}$ is $(\lambda, c\lambda,p_1,p_2)$-sensitive for $d$, we have $\Pr[g_j(x^\star)=g_j(z)]\ge p_1^k$ for $d(x^\star,z)\le\lambda$. Furthermore, we have
+				\begin{align*}
+					\Pr\left[\forall j\in[L]:g_j(x^\star)\neq g_j(z)\right] &= \prod_{j=1}^L\Pr[g_j(x^\star)\neq g_j(z)] \\
+						&< (1-p_1^k)^L\le (1-p_1^k)^{1/p_1^k}\le 1/e.
+				\end{align*}
+				Note that $(1-p)^{1/p}\le 1-p\le 1/e$ for $p\in(0,1)$ follows from the more general inequality $1-x\le e^{-x}$ for all $x\in\mathbb{R}$. To see that $L\ge 1/p_1^k$, suppose $L<1/p_1^k$, implying $\log L<-k\log p_1$, which gives us $\frac{\log(1/p_1)}{\log(1/p_2)}\log n<\frac{\log(1/p_1)}{\log(1/p_2)}\log n$, which is absurd. (Another way to see $f(p):=(1-p)^{1/p}\le1/e$ is to note that $\lim_{p\to 0}f(p)=1/e$ and that $f$ is monotonically decreasing on $(0,1)$, because $f'(p)<0$ for all $p\in(0,1)$.)
+			\item We know there exists at least one $x\in\mathcal{A}$ such that $d(x,z)\le c\lambda$, where $z\in\mathcal{A}$ is the query point. We now establish a lower bound on the probability that the procedure finds $(c,\lambda)$-ANN if there is only one such point. Noe that if $g_j(x)=g_j(z)$ for at least one $j\in[L]$ and if $\sum_{j=1}^L |W_j\cap T|<3L$, then the procedure always finds $x$; we will bound this probability from below. (Otherwise the procedure might or might not find $x$.) Let $x^\star\in\mathcal{A}$ be a point returned by the procedure. We then have
+			\begin{align*}
+				\Pr[d(x^\star,z)\le c\lambda] &\ge\Pr\left[\exists j\in[L]:g_j(x)=g_j(z)\land\sum_{j=1}^L|W_j\cap T|< 3L\right] \\
+					&= 1-\Pr\left[\forall j\in[L]:g_j(x)\neq g_j(z)\lor\sum_{j=1}^L|W_j\cap T|\ge3L \right] \\ 
+					&\ge 1-\left(\Pr[\forall j\in[L]:g_j(x)\neq g_j(z)]+\Pr\left[\sum_{j=1}^L|W_j\cap T|\ge 3L\right]\right) \\
+					&\ge 1-(1/3+1/e)>1-2/e>1/4,
+			\end{align*}
+			meaning that the point the procedure finds is an $(c,\lambda)$-ANN with probability greater than $1/4$. (Note that we can amplify this probability by (independently) running the procedure $r>0$ times and taking the closest $x^\star$ to get $\Pr[d(x^\star,z)\le c\lambda]>1-(3/4)^r$.)
+			\item Answers follow.
+			\begin{itemize}
+				\item Average search time for LSH is $0.0104$ seconds; for linear search it is $0.1021$ seconds. LSH is roughly ten times faster. See~\texttt{hwq1i1.m}.
+				\item Figure~\ref{fig:err_l} plots error for various $L$'s with fixed $k$. We see that error decreases as the number of hashtables increases --- the more hashtables we have the more likely we are to map two similar points to the same bucket with at least one hashtable, thus making them a candidate pair. Figure~\ref{fig:err_k} plots error for various $k$'s with fixed $L$. Here, error increases as $k$ increases --- the greater the number of keys the greater the number of possible buckets in a hashatable, meaning we are more likely to hash similar points to different buckets.\footnote{What we mean is that the hashtable with greater number of possible buckets is more likely --- or at least as likely --- to produce a false negative than the hashtable with lesser number of possible buckets.} (See \texttt{err\_l.m} and \texttt{err\_k.m} for code that generated the plots.)
+				\begin{figure}
+					\centering
+					\includegraphics[scale=0.35]{err_l.eps}
+					\caption{Error plot for $L=10,12,\ldots,20$ with fixed $k=24$.}
+					\label{fig:err_l}
+				\end{figure}
+				\begin{figure}
+					\centering
+					\includegraphics[scale=0.35]{err_k.eps}
+					\caption{Error plot for $k=14,16,\ldots,24$ with fixed $L=10$.}
+					\label{fig:err_k}
+				\end{figure}
+				\item Figure~\ref{fig:lin_10_nn} shows NNs found by linear search, while figure~\ref{fig:lsh_10_nn} shows NNs found by LSH with $L=10$ and $k=24$. The query image is shown in figure~\ref{fig:query_img}. Although there is barely any visual resemblance between NNs and the query image, some (in this case four) of the NNs found by linear search were also found by LSH --- a promising result. See~\texttt{plot10nn.m}. (\textbf{Note:} Images in figures~\ref{fig:lin_10_nn} and~\ref{fig:lsh_10_nn} are sorted increasingly by distance from query point, from left to right, top to bottom, i.e., the top leftmost image is the closest one, while the rightmost bottom one is farthest from the query point.)
+				\begin{figure}
+					\centering
+					\includegraphics[scale=0.75]{lin_10_nn.eps}
+					\caption{Top 10 NNs returned by linear search.}
+					\label{fig:lin_10_nn}
+				\end{figure}
+				\begin{figure}
+					\centering
+					\includegraphics[scale=0.75]{lsh_10_nn.eps}
+					\caption{Top 10 NNs returned by LSH.}
+					\label{fig:lsh_10_nn}
+				\end{figure}
+				\begin{figure}
+					\centering
+					\includegraphics[scale=0.75]{img_10.eps}
+					\caption{Query image.}
+					\label{fig:query_img}
+				\end{figure}
+			\end{itemize}
+		\end{enumerate}
+
+\bibliographystyle{alpha}
+\bibliography{refs}
+\end{document}
