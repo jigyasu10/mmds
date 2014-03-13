@@ -1,0 +1,409 @@
+\documentclass[12pt]{article}
+
+\usepackage{fullpage}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amsthm}
+\usepackage{enumerate}
+\usepackage{graphicx}
+\usepackage{epstopdf}
+\usepackage{listings}
+\usepackage{url}
+\usepackage{tabularx}
+\usepackage{tikz}
+\usepackage{color}
+
+\definecolor{sectionblue}{cmyk}{1,.75,0,0}
+\definecolor{crimson}{cmyk}{.1,1,1,.1}
+
+\usetikzlibrary{trees}
+\tikzstyle{level 1} = [sibling distance=200pt]
+\tikzstyle{level 2} = [sibling distance=100pt]
+\tikzstyle{level 3} = [sibling distance=50pt]
+\tikzstyle{innerNode} = [
+	circle,
+	draw=sectionblue!60,
+	thick,
+	top color=sectionblue!20,
+	bottom color=sectionblue!40,
+	align = center
+]
+\tikzstyle{leaf} = [
+	rectangle,
+	draw=crimson!70,
+	thick,
+	top color=crimson!15,
+	bottom color=crimson!35,
+	align = center,
+	rounded corners,
+	text width = 2em
+]
+
+\DeclareMathOperator{\E}{\mathbb{E}} % expectation 
+\DeclareMathOperator{\Conv}{conv}
+\DeclareMathOperator{\Conf}{conf}
+\DeclareMathOperator{\Sim}{sim}
+\DeclareMathOperator{\Lift}{lift}
+\DeclareMathOperator{\Support}{Support}
+\DeclareMathOperator{\err}{error}
+\DeclareMathOperator{\nodes}{nodes}
+\DeclareMathOperator{\pruned}{pruned}
+\DeclareMathOperator{\cost}{cost}
+
+\newcommand\conf[2]{\Conf(#1\rightarrow #2)} % confidence
+\newcommand\lift[2]{\Lift(#1\rightarrow #2)} % lift
+\newcommand\conv[2]{\Conv(#1\rightarrow #2)} % conviction 
+\newcommand\support[1]{\Support(#1)} % conviction 
+\newcommand\ve[1]{\mathbf{#1}}
+
+\begin{document}
+	\input{cover.tex}
+	\section{Support Vector Machine}
+		\begin{enumerate}[(a)]
+			\item We give a sample training set of 5 points $\ve{x}_i\in\mathbb{R}^2$ with their respective classes $y_i\in\{-1,1\}$ such that the set if infeasible under hard constraint SVM, but feasible under soft margin SVM:
+			\begin{itemize}
+				\item $(0, 1), -$,
+				\item $(4, 0), -$,
+				\item $(2, 2), +$,
+				\item $(5, 1), +$,
+				\item $(3, 3), -$.
+			\end{itemize}
+			This data set is clearly infeasible under hard constraint SVM as it is not linearly seperable. However, it is feasible under soft margin SVM. A concrete but trivial solution, assuming $C=0$, is $\ve{w} := \ve{0}$ and $b := \xi_1 := \ldots \xi_n := 0$ (we can set $b$ and $\xi_i$'s to anything). (More generally, for any $\ve{w}$, $b$, and $C$ the problem is feasible under soft margin SVM, because setting $\xi_i := \max(0, 1-y_i(\ve{w}\ve{x}_i+b))$ satisfies all inequalities.) 
+			%% Soft margin SVM is always feasible 
+			\item Let $(\ve{x}_1,y_1),\ldots,(\ve{x}_n,y_n)$ be an arbitrary dataset and suppose we are doing soft margin SVM. Note that setting $i$th slack to $\xi_i := \max(0, 1-y_i(\ve{w}\ve{x}_i+b))$ for all $1\le i\le n$ makes all the inequalities hold, where $\ve{w}$ and $b$ are arbitrary. Thus the problem is feasible.
+			\item Let $\{(\ve{x}_i,y_i)~|~1\le i\le n\}$ be our data set and let $(\ve{w},b,\xi_1,\ldots,\xi_n)$ be feasible parameter set. Clearly, if $y_i(\ve{w}\ve{x}_i+b)\le0$ for arbitrary example, i.e., $i$th example is misclassified, then the corresponding slack will be $\xi_i\ge1$, so each missclassification contributes at least $1$ to the sum $\xi_1+\xi_2+\ldots+\xi_n$. This means $\sum_{i=1}^n\xi_i$ is an upper bound on the number of missclasifications.
+			\item We compute $\nabla_b f(\ve{w},b)$ for the batch gradient descent:
+			\begin{equation*}
+				\nabla_b f(\ve{w},b) = \frac{\partial f}{\partial b}(\ve{w},b) = C\sum_{i=1}^n\frac{\partial L}{\partial b}L(\ve{x}_i,y_i),
+			\end{equation*}
+			where $L$ is the hinge function with the partial derivative of
+			\begin{equation}
+				\frac{\partial L}{\partial b}(\ve{x}_i,y_i) = \left\{
+				\begin{array}{ll}
+					0 & y_i(\ve{w}\ve{x}_i+b) \ge 1, \\
+					-y_i & \mbox{otherwise}.
+				\end{array}\right.
+			\end{equation}
+			For stohastic gradient descent we use $$\nabla_bf_i(\ve{w},b) = C\frac{\partial L}{\partial b}(\ve{x}_i,y_i).$$ For mini batch gradient descent we have $$\nabla_bf_\ell(\ve{w},b) = C\sum_{i=bs\cdot\ell+1}^{\min(n,(\ell+1)bs)}\frac{\partial L}{\partial b}(\ve{x}_i,y_i).$$
+			\item See figure~\ref{fig:hw4q1ie} for $f_k(\ve{w},b)$ plots. (Parameters of descents are as in HW4Q1 text.) Batch GD converged (green line) in $57$th iteration, mini batch GD (red line) in $713$th, while stohastic GD converged (blue line) in $1534$th iteration. In figure~\ref{fig:hw4q1ie} we plotted $f_{57}(\ve{w},n)$ instead of $f_i(\ve{w},b)$ for all $i>57$ for batch GD; we did similar thing for mini batch GD for $i>713$ (this is why green and red line are ``straight'' from some point on). Code for batch GD is in listing~\ref{lst:hw4q1svm_bgd}, code for stohastic GD in listing~\ref{lst:hw4q1svm_sgd}, and code for mini batch GD in listing~\ref{lst:hw4q1svm_mini_bgd}. (Source code is in the appendix at the end of the report.) The running times are in table~\ref{tab:cpu}; we computed running times using \texttt{timeit} Python module.
+			
+			We see that stohastic GD takes least time per iteration but takes many iterations to converge; still, its running time is much lower than batch GD's. Batch GD takes lots of time per iteration as it needs to go through the whole dataset to evaluate the gradient; although it converges very quickly, it is still much slower than stohastic GD. Mini batch GD falls somewhere in between: it converges faster than stohastic GD and takes slightly more time per iteration; in our case it converged faster than both batch and stohastic GD. All variants converge to roughly the same objective function value. 
+			\begin{figure}
+				\centering
+				\includegraphics[scale=0.35]{fig/hw4q1ie.eps}
+				\caption{Value of $f_k(\ve{w},b)$ at each iteration $k$ for batch GD (green), stohastic GD (blue), and mini batch GD (red), where $k=0,1,\ldots,1534$. See text for detailed explanation.}
+				\label{fig:hw4q1ie}
+			\end{figure}
+			\begin{table}
+				\centering
+				\begin{tabular}{|c|c|}
+					\hline
+					Method & Time \\ \hline
+					Batch GD &  2125.11 seconds ($\approx$ 35.4 minutes) \\
+					Stohastic GD & 508.17 seconds ($\approx$ 8.75 minutes) \\
+					Mini batch GD & 326.584 seconds ($\approx$ 5.4 minutes) \\ \hline
+				\end{tabular}
+				\caption{Running times for batch, stohastic, and mini batch GD implementations of SVM.}
+				\label{tab:cpu}
+			\end{table}
+			\item See listing~\ref{lst:hw4q1-f} for code for this task. Figure~\ref{fig:hw4q1if} shows plot of percentage error --- the fraction of missclassified examples on the test set --- of stohastic GD (with parameters as in HW4Q1 text) as a function of regularization parameter $C=1, 10, 50, 100, 200, 300, 400, 500$. We see that increasing $C$ (this means we increase punishment for missclassifications) reduces percentage error on the test set. (If we increased $C$ too much, we would overfit: for very large $C$ we practically ignore $\|\ve{w}\|^2/2$ factor. Similarly, sending $C\to0$ ignores the data.) Percentage error decreases, then is ``stable'' around $C=200,300$ and then decreases some more.
+			\begin{figure}
+				\centering
+				\includegraphics[scale=0.3]{fig/hw4q1if.eps}
+				\caption{Plot of the percentage error of stohastic GD (parameters are in HW4Q1 text) as a function of regularization parameter $C$ for $C=1, 10, 50, 100, 200, 300, 400, 500$.}
+				\label{fig:hw4q1if}
+			\end{figure}
+			% E = [0.5458937198067633, 0.5, 0.45169082125603865, 0.4444444444444444, 0.4613526570048309, 0.3695652173913043, 0.3647342995169082, 0.2995169082125604] 
+		\end{enumerate}
+	\section{Decision Tree Learning}
+		\begin{enumerate}[(a)]
+			\item We compute $I(D)$ for each of the binary attributes. First note that we have $I(D)=100(1-(60/100)^2-(40/100)^2)=48$. 
+			\begin{itemize}
+				\item For ``likes wine'' attribute $|D_L|=|D_R|=50$ and $I(D_L)=I(D_R)=50(1-(30/50)^2-(20/50)^2)=24$, which gives us $I(D)-I(D_L)-I(D_R)=0$.
+				\item For ``likes running'' attribute we have $I(D_L)=30(1-(20/30)^2-(10/30)^2)=13.3$ and $I(D_R)=70(1-(40/70)^2-(30/70)^2)=34.29$, giving us $I(D)-I(D_L)-I(D_R)=0.38$.
+				\item For ``likes pizza'' attribute we have $I(D_L)=80(1-(50/80)^2-(30/80)^2)=37.5$ and $I(D_R)=20(1-(10/20)^2-(10/20)^2)=10$, giving us $I(D)-I(D_L)-I(D_R)=0.5$.
+			\end{itemize}
+			We would use ``likes pizza'' attribute to split the root, because it has highest value of the Gini index based metric $G$. Roughly speaking, this means it alone (in the sense that we do not take into account attribute interactions; we just measure how well each single attribute classifies the data set) best classifies the data set.
+			\item Under reasonable attribute estimation measures --- like information gain and Gini index --- the learner will identify $a_1$ as the most important attribute and use it as the split in the root node; all other attributes will apear in ``lower layers'' of the tree; the complete binary decision tree overfits the data.
+			
+			It is obvious that the desired tree is the one with a single split on $a_1$, with leaf in the left branch ($a_1=1$) predicting $1$ and leaf in the right branch ($a_1=0$) predicting $0$. The reason for this is that simple models tend to generalize well; they are also easier to understand. (Very roughly, Occam's razor tells us we should favor simple hypotheses over complicated ones.)
+			\item We use the following criterion for prunning: \begin{equation*}\alpha=\frac{\err(\pruned(T,t),S)-\err(T,S)}{|\nodes(T)|-|\nodes(\pruned(T,t))|},\end{equation*} where $\err(T,S)$ is error rate of $T$ over the sample $S$. See figure~\ref{fig1} for original tree; figure~\ref{fig2} for $T_1$; figure~\ref{fig3} for $T_2$; figure~\ref{fig4} for $T_3$; and figure~\ref{fig5} for the final tree. Error rates (computed on the data from HW4Q2 figure 1) are included in the figure captions.
+				\begin{figure}[h]
+					\begin{center}
+						\begin{tikzpicture}
+							\node [innerNode] (z){$X$}
+							child {
+								node [innerNode] (a) {$Y$}
+									child {
+									node [innerNode] (b) {$Z$}
+									child {
+										node [leaf] (k) {$1\ +$ \\ $2\ -$}
+										edge from parent 
+								node[above left] {$0$}
+										}
+									child {
+										node [leaf] (k) {$10\ +$ \\ $2\ -$}
+										edge from parent 
+								node[above right] {$1$}
+										}
+										edge from parent 
+								node[above left] {$0$}
+									}
+									child {
+										node [innerNode] (g) {$Z$}
+									child {
+										node [leaf] (k) {$6\ +$ \\ $1\ -$}
+										edge from parent 
+								node[above left] {$0$}
+										}
+									child {
+										node [leaf] (k) {$7\ +$ \\ $1\ -$}
+										edge from parent 
+								node[above right] {$1$}
+										}
+									edge from parent 
+							node[above right] {$1$}
+									}
+									edge from parent 
+							node[above left] {$0$}
+							}
+							child {
+								node [innerNode] (a) {$Y$}
+									child {
+										node [leaf] (b) {$3\ +$ \\ $1\ -$}
+										edge from parent 
+								node[above left] {$0$}
+									}
+									child {
+										node [leaf] (g) {$2\ +$ \\ $10\ -$}
+										edge from parent 
+								node[above right] {$1$}
+									}
+									edge from parent 
+								node[above right] {$1$}
+							};
+						\end{tikzpicture}
+						\caption{Decision tree $T_0$ with $err=(1+2+1+1+1+2)/46$.}
+						\label{fig1}
+					\end{center}
+				\end{figure}
+				\begin{figure}[h]
+					\begin{center}
+						\begin{tikzpicture}
+							\node [innerNode] (z){$X$}
+							child {
+								node [innerNode] (a) {$Y$}
+									child {
+									node [innerNode] (b) {$Z$}
+									child {
+										node [leaf] (k) {$1\ +$ \\ $2\ -$}
+										edge from parent 
+								node[above left] {$0$}
+										}
+									child {
+										node [leaf] (k) {$10\ +$ \\ $2\ -$}
+										edge from parent 
+								node[above right] {$1$}
+										}
+										edge from parent 
+								node[above left] {$0$}
+									}
+									child {
+										node [leaf] (g) {$13\ +$ $2\ -$}
+										edge from parent
+										node[above right] {$1$}
+									}
+									edge from parent 
+							node[above left] {$0$}
+							}
+							child {
+								node [innerNode] (a) {$Y$}
+									child {
+										node [leaf] (b) {$3\ +$ \\ $1\ -$}
+										edge from parent 
+								node[above left] {$0$}
+									}
+									child {
+										node [leaf] (g) {$2\ +$ \\ $10\ -$}
+										edge from parent 
+								node[above right] {$1$}
+									}
+									edge from parent 
+								node[above right] {$1$}
+							};
+						\end{tikzpicture}
+						\caption{Decision tree $T_1$ with $err=(1+2+2+1+2)/46$.}
+						\label{fig2}
+					\end{center}
+				\end{figure}
+				
+				\begin{figure}[h]
+					\begin{center}
+						\begin{tikzpicture}
+							\node [innerNode] (z){$X$}
+							child {
+								node [leaf] (a) {$24\ +$ \\ $6\ -$}
+								edge from parent 
+								node[above left] {$0$}
+							}
+							child {
+								node [innerNode] (a) {$Y$}
+									child {
+										node [leaf] (b) {$3\ +$ \\ $1\ -$}
+										edge from parent 
+								node[above left] {$0$}
+									}
+									child {
+										node [leaf] (g) {$2\ +$ \\ $10\ -$}
+										edge from parent 
+								node[above right] {$1$}
+									}
+									edge from parent 
+								node[above right] {$1$}
+							};
+						\end{tikzpicture}
+						\caption{Decision tree $T_2$ with $err=(6+1+2)/46$.}
+						\label{fig3}
+					\end{center}
+				\end{figure}
+				\begin{figure}[h]
+					\begin{center}
+						\begin{tikzpicture}
+							\node [innerNode] (z){$X$}
+							child {
+								node [leaf] (a) {$24\ +$ $6\ -$}
+								edge from parent
+								node[above right] {$0$}
+							}
+							child {
+								node [leaf] (b) {$5\ +$ $11\ -$}
+								edge from parent
+								node[above ] {$1$}
+							};
+						\end{tikzpicture}
+						\caption{Decision tree $T_3$ with $err=(6+5)/46$.}
+						\label{fig4}
+					\end{center}
+				\end{figure}
+				\begin{figure}[h]
+					\begin{center}
+						\begin{tikzpicture}
+							\node [leaf] (z) {$29\ +$ $17\ -$};
+						\end{tikzpicture}
+						\caption{Decision tree $T_4$ with $err=17/46$.}
+						\label{fig5}
+					\end{center}
+				\end{figure}
+			\item We now compute generalization errors for trees from figures~\ref{fig2}--\ref{fig5} on the test data. We found that $T_1$ and $T_3$ have generalization error of $1/2$; tree $T_2$ has smaller generalization error of $1/4$; tree $T_3$ has zero generalization error; trivial tree $T_4$ has $1/2$ generalization error. Thus tree $T_3$ from figure~\ref{fig4} has the smallest generalization error. 
+		\end{enumerate}
+	\section{Clustering Data Streams}
+		We first remember the notation. 
+		Let $d:\mathbb{R}^p\times\mathbb{R}^p\to\mathbb{R}^+$ be given by $d(x,y):=\|x-y\|_2$ and for $x\in\mathbb{R}^p$ and $T\subset\mathbb{R}^p$ we let
+		\begin{equation*} d(x,T) := \underset{z\in T}{\min}~d(x,z).\end{equation*} For subsets $S,T\subset\mathbb{R}^p$ and a weight function $w:S\to\mathbb{R}^+$, define
+		\begin{equation*}
+			\cost_w(S,T) := \sum_{x\in S}w(x)d(x,T)^2.
+		\end{equation*}
+		Also, let $T^\star := \underset{|T|=k}{\arg\min}~\cost_w(S,T)$.
+		We now turn to problems. 
+		\begin{enumerate}[(a)]
+			\item Let $(a,b)\in\mathbb{R}_+$. Clearly we have
+			\begin{equation*}
+				2a^2+2b^2-(a+b)^2 = a^2+b^2-2ab = (a-b)^2\ge0,
+			\end{equation*}
+			giving us $(a+b)^2\le2a^2+2b^2$.
+			\item We now show
+			\begin{equation*}
+				\cost(S,T)\le2\cost_w(\hat{S},T)+2\sum_{i=1}^\ell\cost(S_i,T_i).
+			\end{equation*}
+			First note that $\sum_{t_{ij}\in\hat{S}}|S_{ij}|=|S|$ and that each $x\in S$ belongs to exactly one $S_i$ and exactly one $S_{ij}$. Pick arbitrary $x\in S$ and suppose $x\in S_i$ with $z:=\underset{z\in T}{\arg\min}~d(x,z)$. Now apply triangle inequality to get $d(x,z)\le d(x,t_{ix})+d(t_{ix},z)$ for $t_{ix}:=\underset{t_{ix}\in T_i}{\arg\min}~d(x,t_{ix})$. Taking squares we get
+			\begin{align*}
+				d(x,z)^2 &\le (d(x,t_{ix})+d(t_{ix},z))^2 \\
+					&\le 2d(x,t_{ix})^2+2d(t_{ix},z)^2,
+			\end{align*}
+			with the last inequality following by previous bullet. If $x\in S_i$ ``belongs to'' center $t_{ix}\in T_i$, then ${\arg\min}_{z\in T}~d(x,z)={\arg\min}_{z\in T}~d(t_{ix},z)$, so the proof is practically finished. We now sum over all elements and get what we want:
+			\begin{align*}
+				\sum_{x\in S}\cost(x,T) &= \sum_{i=1}^\ell\sum_{x\in S_i} \min_{z\in T}~d(x,z)^2 \\
+					&\le \sum_{i=1}^\ell\sum_{x\in S_i}\left(2\min_{t_{ix}\in T_i}~d(x,t_{tix})^2+2\min_{z\in T}~d(t_{ix},z)^2\right) \\
+					&= 2\cost_w(\hat{S}, T) + 2\sum_{i=1}^\ell\cost(S_i,T_i).
+			\end{align*}
+			\item We now prove $\sum_{i=1}^\ell \cost(S_i,T_i)\le \alpha\cost(S,T^\star)$. Note that $S_1,S_2,\ldots,S_{\ell}$ form partition of $S$ and by \textsc{alg}'s design $\cost(S_i,T_i)\le\alpha\cost(S_i,T')$ for all $|T'|=k$. We thus have
+			\begin{align*}
+				\sum_{i=1}^\ell \cost(S_i,T_i) &\le \alpha\sum_{i=1}^\ell\cost(S_i,T^\star) \\
+					&= \alpha\sum_{i=1}^\ell\sum_{x\in S_i}d(x,T^\star)^2 \\
+					&= \alpha\sum_{x\in S} d(x,T^\star)^2 \\
+					&= \alpha\cost(S,T^\star).
+			\end{align*}
+			\item We now show $\cost_w(\hat{S},T)\le\alpha\cost_w(\hat{S},T^\star)$. Let $T_\star := \underset{|T'|=k}{\arg\min}~\cost_w(\hat{S},T')$, so $\cost_w(\hat{S},T)\le\alpha\cost_w(\hat{S},T_\star)$. Now since $\cost_w(\hat{S},T^\star)\ge\cost_w(\hat{S},T_\star)$, we put all together and get
+			\begin{equation*}
+				\alpha\cost_w(\hat{S},T^\star)\ge\alpha\cost_w(\hat{S},T_\star)\ge\cost_w(\hat{S},T),
+			\end{equation*}
+			so we ``proved'' $\cost_w(\hat{S},T)\le\alpha\cost_w(\hat{S},T^\star)$.
+			\item In this bullet we prove $\cost_w(\hat{S},T^\star)\le 2\sum_{i=1}^\ell \cost(S_i,T_i)+2\cost(S,T^\star)$, using similar arguments as in (b). Fix $t_{ij}\in\hat{S}$. (Recall that each center $t_{ij}$ has associated $S_{ij}\subseteq S_i$.) Then for each $x\in S_{ij}$ we have $d(t_{ij},z)\le d(t_{ij},x)+d(x,z)$ for $z={\arg\min}_{z\in T^\star}~d(t_{ij},z)=d(x,T^\star)$. Using (a) we get $d(t_{ij},z)^2 \le 2d(t_{ij},x)^2+2d(x,z)^2$. We now sum over all elements to get the desired inequality:
+			\begin{align*}
+				\cost_w(\hat{S},T^\star) &= \sum_{t_{ij}\in\hat{S}} |S_{ij}|d(t_{ij},T^\star)^2 \\
+					&\le \sum_{t_{ij}\in\hat{S}}\sum_{x\in S_{ij}} \left(2d(t_{ij},x)^2+2d(x,T^\star)^2\right) \\
+					&= 2\sum_{i=1}^\ell\sum_{x\in S_i} d(t_{ij},x)^2 + 2\sum_{x\in S}d(x,T^\star)^2 \\
+					&= 2\sum_{i=1}^\ell\cost(S_i, T_i) + 2\cost(S,T^\star)
+			\end{align*}
+			(Above we are just summing over different partitions of the same set and rearranging the summation terms, so everything is fine.)
+			\item Using previous inequalities we have:
+			\begin{align*}
+				\cost(S,T) &\le 2\cost_w(\hat{S},T)+2\sum_{i=1}^\ell \cost(S_i,T_i) \\
+					&\le 2\alpha\cost_w(\hat{S},T^\star)+2\alpha\cost(S,T^\star) \\
+					&\le 2\alpha\left(2\sum_{i=1}^\ell \cost(S,T_i)+2\cost(S,T^\star)\right)+2\alpha\cost(S,T^\star) \\
+					&\le 2\alpha\left(2\alpha\cost(S,T^\star)+2\cost(S,T^\star)\right)+2\alpha\cost(S,T^\star) \\
+					&= (4\alpha^2+6\alpha)\cost(S,T^\star).
+			\end{align*}
+			\item We show that we with a good choice of partitioning, \textsc{algstr} works with $O(\sqrt{nk})$ memory. If we pick $\ell=O(\sqrt{n/k})$ then we use $n/\ell=O(\sqrt{nk})$ memory in each of $\ell$ steps and $k\ell=O(\sqrt{nk})$ memory for the final clustering. We thus use $O(\sqrt{nk})$ memory in total.
+		\end{enumerate}
+	\section{Data Streams}
+		Let $S=\langle a_1,a_2,\ldots,a_t\rangle$ be a data stream of items from $\{1,2,\ldots,n\}$. Assume for any $1\le i\le n$, $F[i]$ is the number of times item $i$ has appeared in $S$. For given parameters $\epsilon>0$ and $\delta>0$ the algorithm picks $\lceil\log(1/\delta)\rceil$ independent hash functions $h_j:\{1,\ldots,n\}\to\{1,2,\ldots,\lceil e/\epsilon\rceil\}$. Let $\widetilde{F}[i]:=\min_j c_{j,h_j(i)}$.
+		(Note: Our notation here is somewhat cumbersome; sorry for inconvinience.)
+		\begin{enumerate}[(a)]
+			\item We claim $\widetilde{F}[i]\ge F[i]$ for all $1\le i\le n$. To see this note that if item $i$ appeared $F[i]$ times, then $c_{j,h_j(i)}\ge F[i]$ for all $1\le j\le n$, because each hash function $h_j$ will increment the count $c_{j,h_j(i)}$ at each of the $F[i]$ appearances of $i$. (Count may be greater, depending on the number of collisions.)
+			\item For any $1\le i\le n$ and $1\le j\le \lceil\log(1/\delta)\rceil$ we will prove
+			\begin{equation*}
+				\E[c_{j,h_j(i)}]\le F[i]+\frac{\epsilon}{e}(t-F[i]).
+			\end{equation*}
+			First fix item $i\in\{1,2,\ldots,n\}$ and define random varaible $X_j := c_{j,h_j(i)}$. We already know $X_j\ge F[i]$; we just need to bound ``surplus''\footnote{This is translation of ``prese\v{z}ek''.} in our count. To do this, we define indicator random variable $Y_{j,k}:=1$ if $h_j(i)=h_k(i)$ for $k\neq i$ and $k\in\{1,2,\ldots,n\}$ and $Y_{j,k}:=0$ otherwise. (Intuitively, sum of $Y_{j,k}$'s counts collisions, and thus surplus in our counts.) We can now write $X_j$ in terms of $F[i]$ and indicator random variables:
+			\begin{equation*}
+				X_j = F[i] + \sum_{1\le k\neq i\le n} Y_{j,k}F[k].
+			\end{equation*}
+			Note $\E[Y_{j,k}]=\Pr[Y_{j,k}=1]=\Pr[h_j(k)=h_j(i)]\le\epsilon/e$ because hash functions are uniform and independent. By linearity of expcetation we have
+			\begin{align*}
+				\E[X_j] &= F[i] + \sum_{1\le k\neq i\le n} \E[Y_{j,k}]F[k] \\
+					&\le F[i]+\frac{\epsilon}{e}\sum_{1\le k\neq i\le n} F[k] \\
+					&= F[i] + \frac{\epsilon}{e}(t-F[i]),
+			\end{align*}
+			establishing the inequality, because we fixed arbitrary item $i$. (We used $t=\sum_i F[i]$ and $\sum_{k\neq i}=t-F[i]$.)
+			\item We now show
+			\begin{equation*}
+				\Pr[\widetilde{F}[i]\le F[i]+\epsilon t]\ge1-\delta.
+			\end{equation*}
+			Recall that the Markov's inequality says $\Pr[X\ge a]\le\E[X]/a$ for real constant $a>0$ and nonnegative random variable $X$. For $X_j$ from previous bullet we have $\Pr[X_j-F[i]\ge\epsilon t]\le \E[X_i-F[i]]/(t\epsilon)\le 1/e$. First note that $\Pr[\widetilde{F}[i]\le F[i]+\epsilon t]=\Pr[\widetilde{F}[i]-F[i]\le \epsilon t]$ and (because $\widetilde{F}[i]=\min_j~c_{j,h_j(i)}$) that $\widetilde{F}[i]-F[i]\le \epsilon t$ implies $c_{j,h_j(i)}-F[i]\le\epsilon t$ for all $1\le j\le n$. We will ``work with'' event `$\widetilde{F}[i]\ge F[i]+\epsilon t$'. Thus
+			\begin{align*}
+				\Pr[\widetilde{F}[i]\ge F[i]+\epsilon t] &= \Pr[\widetilde{F}[i]-F[i]\ge\epsilon t] \\
+					&= \Pr\left[\bigwedge_{j=1}^{\lceil\log(1/\delta)\rceil} \left(c_{j,h_j(i)}-F[i]\ge\epsilon t\right)\right] \\
+					&= \prod_{j=1}^{\lceil\log(1/\delta)\rceil} \Pr[c_{j,h_j(i)}-F[i]\ge\epsilon t] \\
+					&\le (1/e)^{\lceil\log(1/\delta)\rceil} \le (1/e)^{\log(1/\delta)} = (1/e)^{-\log\delta}=e^{\log\delta}=\delta,
+			\end{align*}
+			because we used natural logarithms for this question, i.e., $\log x:=\log_e x$. Finally, note that $\Pr[\widetilde{F}[i]\le F[i]+\epsilon t]=1-\Pr[\widetilde{F}[i]\ge F[i]+\epsilon t]\ge1-\delta$. This finishes the proof.
+			\item In HW3Q4 we had a streaming implementation of algorithm for finding dense communities in networks, where we processed the input graph edge-by-edge and counted degrees of each of the nodes; it uses at least $4|V|=O(|V|)$ bytes of memory for counting vertex degrees, assuming counters are 4B integers. We could use algorithm from this question to estimate (two times) the degree of each vertex with $\epsilon>0$ parameter of HW3Q4 algorithm, because $2\deg_G(v)$ equals the number of edges that $v$ ``touches''. Setting, for instance, $\delta:=1/|V|^2$ we would this way use only $O(\log |V|)$ space (because $\epsilon$ is just some constant) for vertex degree counts. The total asymptotic space complexity of the HW3Q4 algorithm is unchanged.
+		\end{enumerate}
+	\appendix
+	\section{Source code for SVM}
+		This appendix contains source code we wrote for the first question. (There is lots of debugging output; please ignore it.)
+		\subsection{SVM via batch GD, stohastic GD, and mini batch GD}
+			\lstinputlisting[label=lst:hw4q1svm_bgd,caption={SVM via batch gradient descent.},language=python,frame=single,tabsize=2,basicstyle=\footnotesize,numbers=left,breaklines=true]{source-q1/hw4q1-bgd.py}
+			\lstinputlisting[label=lst:hw4q1svm_sgd,caption={SVM via stohastic gradient descent.},language=python,frame=single,tabsize=2,basicstyle=\footnotesize,numbers=left,breaklines=true]{source-q1/hw4q1-sgd.py}
+			\lstinputlisting[label=lst:hw4q1svm_mini_bgd,caption={SVM via mini batch gradient descent.},language=python,frame=single,tabsize=2,basicstyle=\footnotesize,numbers=left,breaklines=true]{source-q1/hw4q1-min-bgd.py}
+			
+			Plots were generated by running \texttt{python hw4q1-bgd.py > hw4q1-bgd-a.txt} (similarly run mini batch GD and stohastic GD) and then running \texttt{plot.py} from listing~\ref{lst:plot}.
+			
+			\lstinputlisting[label=lst:plot,caption={Code snippet used for plotting.},language=python,frame=single,tabsize=2,basicstyle=\footnotesize,numbers=left,breaklines=true]{source-q1/plot.py}
+			
+		\subsection{Code used to experiment with regularization}
+			\lstinputlisting[label=lst:hw4q1-f,caption={Code for HW4Q1 item (f).},language=python,frame=single,tabsize=2,basicstyle=\footnotesize,numbers=left,breaklines=true]{source-q1/hw4q1-f.py}
+\bibliographystyle{alpha}
+\bibliography{refs}
+\end{document}
