@@ -5,4 +5,4 @@ Stuff from [FRI](http://www.fri.uni-lj.si/) version of the [Mining Massive Data 
  - [Homework 1](http://blazsovdat.com/mmds/hw-1.pdf) 
  - [Homework 2](http://blazsovdat.com/mmds/hw-2.pdf)
  - [Homework 3](http://blazsovdat.com/mmds/hw-3.pdf)
- - Homework 4
+ - [Homework 4](http://blazsovdat.com/mmds/hw-4.pdf)
